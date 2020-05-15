@@ -41,9 +41,7 @@ namespace ANYWAYS.UrbanisticPolygons
                     continue;
                 }
 
-                var r = CalculateValue(w.Tags);
-
-                if (r == null)
+                if (!TryCalculateValue(w.Tags, out var r))
                 {
                     continue;
                 }
@@ -60,11 +58,12 @@ namespace ANYWAYS.UrbanisticPolygons
         /// </summary>
         /// <param name="tags"></param>
         /// <returns></returns>
-        public T CalculateValue(TagsCollectionBase tags)
+        public bool TryCalculateValue(TagsCollectionBase tags, out T value)
         {
             if (tags == null)
             {
-                return default;
+                value = default;
+                return false;
             }
             foreach (var tag in tags)
             {
@@ -73,19 +72,20 @@ namespace ANYWAYS.UrbanisticPolygons
                     continue;
                 }
                 
-                if (nested.TryGetValue(tag.Value, out var r))
+                if (nested.TryGetValue(tag.Value, out value))
                 {
-                    return r;
+                    return true;
                 }
 
-                if (nested.TryGetValue("*", out var catchAll))
+                if (nested.TryGetValue("*", out value))
                 {
-                    return catchAll;
+                    return true;
                 }
                 
             }
 
-            return default;
+            value = default;
+            return false;
         }
     }
 }
