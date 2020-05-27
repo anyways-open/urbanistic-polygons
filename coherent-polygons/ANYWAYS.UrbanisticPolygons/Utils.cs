@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Graph;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
@@ -38,7 +39,8 @@ namespace ANYWAYS.UrbanisticPolygons
             if (latitudinalDifference < 0) return Math.PI;
             return 0d;
         }
-        
+
+
         public static T[] SubArray<T>(this T[] data, int start, int end)
         {
             var ts = new T[end - start];
@@ -59,8 +61,6 @@ namespace ANYWAYS.UrbanisticPolygons
         /// <summary>
         /// In radians
         /// </summary>
-        /// <param name="destination"></param>
-        /// <returns></returns>
         public static double GetDegreesAzimuth(Node departure, Node destination)
         {
             return GetAzimuth(departure, destination) * 180 / Math.PI;
@@ -72,11 +72,19 @@ namespace ANYWAYS.UrbanisticPolygons
             var empty = new Dictionary<string, object>();
             return ways.Select(w => (w, empty)).AsGeoJson();
         }
-        
+
+        public static string AsPolygonGeoJson(this ICompleteOsmGeo way)
+        {
+            return new[] {way}.AsPolygonGeoJson();
+        }
+
         public static string AsPolygonGeoJson(this IEnumerable<ICompleteOsmGeo> ways)
         {
-            var empty = new Dictionary<string, object>();
-            return ways.Select(w => (w, empty)).AsPolygonGeoJson();
+            
+            
+            return ways.Select(w => (w,
+                  w.Tags.ToDictionary(tag => tag.Key, tag => (object) tag.Value)
+                )).AsPolygonGeoJson();
         }
 
         public static string AsGeoJson(this IEnumerable<(ICompleteOsmGeo, Dictionary<string, object>)> ways)
@@ -119,7 +127,7 @@ namespace ANYWAYS.UrbanisticPolygons
                 {
                     var coors = w.Nodes.Select(n =>
                         new Coordinate(n.Longitude.Value, n.Latitude.Value)).ToArray();
-                    collection.Add(new Feature(new Polygon(
+                    collection.Add(new Feature(new NetTopologySuite.Geometries.Polygon(
                         new LinearRing(coors)), new AttributesTable(properties)));
                 }
             }
@@ -135,6 +143,39 @@ namespace ANYWAYS.UrbanisticPolygons
 
             var writer = new GeoJsonWriter();
             return writer.Write(new Feature(new LineString(coors), new AttributesTable()));
+        }
+
+        /// <summary>
+        /// IF the two geometries have a common endpoint, merge them
+        /// Otherwise, return null
+        /// </summary>
+        /// <param name="edge0"></param>
+        /// <param name="edge1"></param>
+        /// <returns></returns>
+
+        public static Node[] FuseGeometry(Node[] edge0, Node[] edge1)
+        {
+            Node[] geometry;
+            if (edge0.Last().NodeId() == edge1[0].NodeId())
+            {
+                geometry = edge0.Concat(edge1).ToArray();
+            }else if (edge1.Last().NodeId() == edge0[0].NodeId())
+            {
+                geometry = edge1.Concat(edge0).ToArray();
+            }else if (edge0[0].NodeId() == edge1[0].NodeId())
+            {
+                geometry = edge0.Reverse().Concat(edge1).ToArray();
+            }
+            else if(edge0.Last().NodeId() == edge1.Last().NodeId())
+            {
+                geometry = edge0.Concat(edge1.Reverse()).ToArray();
+            }
+            else
+            {
+                return null; // Could not fuse
+            }
+
+            return geometry;
         }
     }
 }

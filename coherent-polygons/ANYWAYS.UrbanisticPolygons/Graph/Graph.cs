@@ -9,11 +9,18 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
 {
     public partial class Graph
     {
+        private readonly Tile _bbox;
+
         private readonly Dictionary<(long smallestId, long largestId), CompleteWay> _edges =
             new Dictionary<(long smallestId, long largestId), CompleteWay>();
 
         private readonly Dictionary<long, (HashSet<long> connections, Node n)> _vertices =
             new Dictionary<long, (HashSet<long>, Node n)>();
+
+        public Graph(Tile bbox)
+        {
+            _bbox = bbox;
+        }
 
         /// <summary>
         /// All vertexes with only two edges are removed, those two edges are taken together
@@ -36,35 +43,15 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
                 var c0 = Id(vertexId, a);
                 var c1 = Id(vertexId, b);
 
-                var edge0 = _edges[c0];
-                var edge1 = _edges[c1];
-
                 _edges.Remove(c0);
                 _edges.Remove(c1);
 
-                Node[] geometry;
-                if (edge0.Nodes.Last().NodeId() == edge1.Nodes[0].NodeId())
-                {
-                    geometry = edge0.Nodes.Concat(edge1.Nodes).ToArray();
-                }else if (edge1.Nodes.Last().NodeId() == edge0.Nodes[0].NodeId())
-                {
-                    geometry = edge1.Nodes.Concat(edge0.Nodes).ToArray();
-                }else if (edge0.Nodes[0].NodeId() == edge1.Nodes[0].NodeId())
-                {
-                    geometry = edge0.Nodes.Reverse().Concat(edge1.Nodes).ToArray();
-                }
-                else
-                {
-                    // edge0.Last == edge1.Last
-                    geometry = edge0.Nodes.Concat(edge1.Nodes.Reverse()).ToArray();
-                }
-                
                 var fused = new CompleteWay()
                 {
-                    Nodes = geometry,
-                    Tags = edge0.Tags
+                    Nodes = Utils.FuseGeometry(_edges[c0].Nodes, _edges[c1].Nodes),
+                    Tags = _edges[c0].Tags
                 };
-                
+
                 _edges[Id(a, b)] = fused;
                 toRemove.Add(vertexId);
 
@@ -80,8 +67,107 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
                 _vertices.Remove(id);
             }
         }
+        
+        public Node[] BuildOuterRing(List<(long, long)> ids)
+        {
+            var (geometry, notMatched) = BuildPolygonFrom(ids);
+            if (notMatched == null)
+            {
+                return geometry;
+            }
 
-        public void PruneDeadEnds()
+            var way = new CompleteWay()
+            {
+                Nodes = geometry
+            };
+            var fullyContained = true;
+            foreach (var noMatch in notMatched)
+            {
+               fullyContained &= way.FullyContains(_edges[noMatch]);
+            }
+
+            if (fullyContained)
+            {
+                return geometry;
+            }
+            
+            // The geometry we have, is the inner ring - we simply discard it
+            return BuildOuterRing(notMatched);
+
+        }
+
+        public (Node[] geometry, List<(long, long)> notMatched) BuildPolygonFrom(List<(long, long)> ids)
+        {
+            if (ids == null) throw new ArgumentNullException(nameof(ids));
+            Node[] nodes = null;
+            // We skip all entries with exactly two occurences.
+            // WHen a smaller polygon is contained within a bigger polygon, the bigger polygon will have a connection from the outer ring to the inner ring
+            // This connection will have every edge listed twice - it is exactly this connection that is removed here
+
+            var notDouble = new HashSet<(long, long)>();
+            foreach (var id in ids)
+            {
+                if (notDouble.Contains(id))
+                {
+                    notDouble.Remove(id);
+                }
+                else
+                {
+                    notDouble.Add(id);
+                }
+                
+            }
+            
+            var leftOvers = notDouble.ToList();
+            while (leftOvers.Any())
+            {
+                var notMatched = new List<(long, long)>();
+                foreach (var id in leftOvers)
+                {
+                    var geo = _edges[id].Nodes;
+                    if (nodes == null)
+                    {
+                        nodes = geo;
+                        continue;
+                    }
+
+                    var fused = Utils.FuseGeometry(geo, nodes);
+                    if (fused == null)
+                    {
+                        notMatched.Add(id);
+                        continue;
+                    }
+
+                    nodes = fused;
+                }
+
+                if (notMatched.Count == leftOvers.Count())
+                {
+                    
+                    // If we get stuck here, we can't walk any further. This is probably because there is an inner polygon
+                    // We just give back what was not matched + the geometry
+                    return (nodes, notMatched);
+
+                }
+
+                leftOvers = notMatched;
+            }
+
+            return (nodes, null);
+        }
+
+        public void RemoveVertex(long vertexid)
+        {
+            var (connections, _) = _vertices[vertexid];
+            _vertices.Remove(vertexid);
+            foreach (var connection in connections)
+            {
+                _vertices[connection].connections.Remove(vertexid);
+                _edges.Remove(Id(connection, vertexid));
+            }
+        }
+
+        public Graph PruneDeadEnds()
         {
             var idsToRemove = new HashSet<long>();
             var edgesToRemove = new HashSet<(long, long)>();
@@ -122,9 +208,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
             {
                 _edges.Remove(key);
             }
+
+            return this;
         }
 
-        public List<CompleteWay> GetPolygons()
+        public List<(CompleteWay geometry, List<(long, long)> boundaryEdges)> GetPolygons()
         {
             /* Determines all the polygons
              We know that every edge should be part of exactly two polygons;
@@ -135,8 +223,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
 
             var forbiddenOrders = new HashSet<((long, long), (long, long))>();
 
-            var polygons = new List<CompleteWay>();
-            foreach (var ((from, to), geometry) in _edges)
+            var polygons = new List<(CompleteWay geometry, List<(long, long)> boundaryEdges)>();
+            foreach (var ((from, to), _) in _edges)
             {
                 var poly = WalkAround(from, to, forbiddenOrders);
                 if (poly == null)
@@ -144,7 +232,14 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
                     continue;
                 }
 
-                polygons.Add(poly);
+                if (poly.Value.geometry.IsClockwise())
+                {
+                    // THis is the outline polygon containing everything
+                    // We skip it
+                    continue;
+                }
+
+                polygons.Add(poly.Value);
             }
 
             return polygons;
@@ -182,12 +277,17 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
             return angles;
         }
 
+        public CompleteWay GetGeometry((long, long) id)
+        {
+            return _edges[Id(id)];
+        }
+
 
         public string AsGeoJson()
         {
             var all = new List<(ICompleteOsmGeo, Dictionary<string, object>)>();
 
-            foreach (var (id, (connections, n )) in _vertices)
+            foreach (var (id, (_, n )) in _vertices)
             {
                 var attr = new Dictionary<string, object>
                 {

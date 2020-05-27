@@ -7,8 +7,41 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
 {
     public partial class Graph
     {
-        public void AddWay(CompleteWay segment)
+
+        public Graph(IEnumerable<CompleteWay> segments)
         {
+            AddWays(segments);
+        }
+        
+        public Graph(IEnumerable<CompleteWay> segments, Tile bbox) : this(bbox)
+        {
+            AddWays(segments);
+        }
+
+        private void AddWays(IEnumerable<CompleteWay> segment)
+        {
+            foreach (var way in segment)
+            {
+                AddWay(way);
+            }
+        }
+
+        private void AddWay(CompleteWay segment)
+        {
+            var bbox = new BBox(segment);
+            if (_bbox.Left <= bbox.MinLon &&
+                bbox.MaxLon <= _bbox.Right &&
+                _bbox.Bottom <= bbox.MinLat &&
+                bbox.MaxLat <= _bbox.Top)
+            {
+                // all is ok
+            }
+            else
+            {
+                return;
+            }
+            
+            
             var start = segment.Nodes.First();
             var startId = start.NodeId();
             var end = segment.Nodes.Last();

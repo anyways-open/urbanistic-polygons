@@ -9,12 +9,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
 {
     public partial class Graph
     {
-        public CompleteWay WalkAround(long @from, long to, HashSet<((long, long), (long, long))> forbiddenOrders)
+        public (CompleteWay geometry, List<(long, long)> boundaryEdges)? WalkAround(long @from, long to, HashSet<((long, long), (long, long))> forbiddenOrders)
         {
             var firstId = Id(from, to);
             var currentId = firstId;
 
             var geometry = new List<Node>();
+            var edges = new List<(long, long)>();
 
             void AddLine((long, long) id)
             {
@@ -24,6 +25,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
                     return;
                 }
 
+                edges.Add(currentId);
                 var toAdd = _edges[currentId].Nodes;
 
                 if (toAdd[0].NodeId() == geometry[0].NodeId()
@@ -48,8 +50,6 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
                     {
                         geometry.Add(toAdd[i]);
                     }
-
-                    return;
                 }
             }
 
@@ -124,7 +124,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
 
             polygon.Nodes[0] = polygon.Nodes.Last(); // SOmetimes, the start- and endpoint are different in the 10th digit after the dot, so we make sure they are the same
 
-            return polygon;
+            return (polygon, edges);
         }
     }
 }

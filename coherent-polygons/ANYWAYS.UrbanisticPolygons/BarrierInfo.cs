@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using OsmSharp;
-using OsmSharp.Streams;
+using System.Linq;
 using OsmSharp.Tags;
 
 namespace ANYWAYS.UrbanisticPolygons
@@ -25,39 +24,26 @@ namespace ANYWAYS.UrbanisticPolygons
 
             }
         }
-        
-        public Dictionary<Way, T> GetBarriers(XmlOsmStreamSource stream)
+
+        public  IEnumerable<T> Values()
         {
-            var allBarriers = new Dictionary<Way, T>();
-            foreach (var feature in stream.EnumerateAndIgore(true, false, true))
+            return _barriers.Values.SelectMany(d => d.Values);
+        }
+
+        public T CalculateOrDefault(TagsCollectionBase tags, T defaultValue)
+        {
+            if (TryCalculateValue(tags, out var v))
             {
-                if (!(feature is Way w))
-                {
-                    continue;
-                }
-
-                if (w.Tags == null)
-                {
-                    continue;
-                }
-
-                if (!TryCalculateValue(w.Tags, out var r))
-                {
-                    continue;
-                }
-
-                allBarriers.Add(w, r);
+                return v;
             }
 
-            return allBarriers;
+            return defaultValue;
         }
 
 
         /// <summary>
         /// Calculates the resistance for the given tag combination, returns null if this is not a barrier
         /// </summary>
-        /// <param name="tags"></param>
-        /// <returns></returns>
         public bool TryCalculateValue(TagsCollectionBase tags, out T value)
         {
             if (tags == null)
