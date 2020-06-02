@@ -132,7 +132,7 @@ namespace ANYWAYS.UrbanisticPolygons
             {
                 difference += (a.GetRatio(key) - b.GetRatio(key)) * (a.GetRatio(key) - b.GetRatio(key));
             }
-            
+
             // Note: value between '0' and 'n', where 'n' is the number of possible classifications. The lower, the more similar
 
             return difference;
@@ -141,34 +141,27 @@ namespace ANYWAYS.UrbanisticPolygons
         public double MergeImportance(UrbanPolygon a, UrbanPolygon b,
             IEnumerable<(long, long)> sharedEdges, Graph.Graph graph)
         {
+            var sizeDifference = Math.Abs(b.Area - a.Area);
+
 
             var diff = PolygonDifference(a, b);
-            if(string.IsNullOrEmpty(a.BiggestClassification()) || string.IsNullOrEmpty(b.BiggestClassification()))
+            if (string.IsNullOrEmpty(a.BiggestClassification()) || string.IsNullOrEmpty(b.BiggestClassification()))
             {
-                diff = -1;
+                diff = 0;
             }
+
             var sharedLength = sharedEdges.Sum(id => graph.GetGeometry(id).Length());
 
             var perimeterDiff = LengthDifference(a, b, sharedLength, graph);
 
 
-            if (perimeterDiff < 0 && diff <= 1.0)
+            if (perimeterDiff < 0 )
             {
                 // THe polygons are quite similar and they fuse to something more compact!
                 return 1000000;
             }
 
-            if (diff <= 1.0)
-            {
-                // Quite similar polygons - it all depends on the exact barrier
-                return BarrierMergeProbability(a,b,sharedEdges, graph);
-            }
-
-            
-            // not similar enough
-            return -1;
-
-
+            return (10 - 10*diff) * (1-sizeDifference/10) * BarrierMergeProbability(a, b, sharedEdges, graph);
         }
     }
 }

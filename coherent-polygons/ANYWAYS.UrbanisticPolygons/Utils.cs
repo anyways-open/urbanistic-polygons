@@ -177,5 +177,12 @@ namespace ANYWAYS.UrbanisticPolygons
 
             return geometry;
         }
+        
+        public static T Pop<T>(this List<T> list)
+        {
+            var last = list.Last();
+            list.RemoveAt(list.Count - 1);
+            return last;
+        }
     }
 }
