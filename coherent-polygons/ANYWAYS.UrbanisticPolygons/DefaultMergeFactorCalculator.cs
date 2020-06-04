@@ -6,6 +6,8 @@ namespace ANYWAYS.UrbanisticPolygons
 {
     public class DefaultMergeFactorCalculator : IMergeFactorCalculator
     {
+        private readonly double _expectedPolygonSize;
+
         /// <summary>
         /// Barrier resistance for not-similar areas
         /// </summary>
@@ -61,6 +63,11 @@ namespace ANYWAYS.UrbanisticPolygons
             ("waterway", "riverbank", "water")
         );
 
+
+        public DefaultMergeFactorCalculator(double expectedPolygonSize)
+        {
+            _expectedPolygonSize = expectedPolygonSize;
+        }
 
         /// <summary>
         /// Calculates the perimeter of the two polygons before and the new polygon afterwards
@@ -147,7 +154,7 @@ namespace ANYWAYS.UrbanisticPolygons
             var diff = PolygonDifference(a, b);
             if (string.IsNullOrEmpty(a.BiggestClassification()) || string.IsNullOrEmpty(b.BiggestClassification()))
             {
-                diff = 0;
+                diff = -1;
             }
 
             var sharedLength = sharedEdges.Sum(id => graph.GetGeometry(id).Length());
@@ -155,13 +162,19 @@ namespace ANYWAYS.UrbanisticPolygons
             var perimeterDiff = LengthDifference(a, b, sharedLength, graph);
 
 
-            if (perimeterDiff < 0 )
+            if (perimeterDiff < 0)
             {
                 // THe polygons are quite similar and they fuse to something more compact!
                 return 1000000;
             }
 
-            return (10 - 10*diff) * (1-sizeDifference/10) * BarrierMergeProbability(a, b, sharedEdges, graph);
+            // Will be positive if 'a' is smaller then the expected size, 0 otherwise, ratio between 0 - 1
+            var smallnessA = Math.Max(0,_expectedPolygonSize -a.Area)/_expectedPolygonSize;
+            var smallnessB = Math.Max(0, _expectedPolygonSize - b.Area) / _expectedPolygonSize;
+
+            return 
+                (smallnessA * 50) + (smallnessB * 50) +
+                (10 - 10 * diff) + (1 - sizeDifference / 10) * BarrierMergeProbability(a, b, sharedEdges, graph);
         }
     }
 }

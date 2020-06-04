@@ -18,6 +18,11 @@ namespace ANYWAYS.UrbanisticPolygons
 
         public static IEnumerable<Coordinate> Coordinates(this IEnumerable<Node> n)
         {
+            if (n == null)
+            {
+                throw new NullReferenceException("n");
+            }
+
             return n.Select(Coordinate);
         }
 
@@ -138,20 +143,20 @@ namespace ANYWAYS.UrbanisticPolygons
             var p0 = new Polygon(new LinearRing(a.Nodes.Coordinates().ToArray()));
             var p1 = new Polygon(new LinearRing(b.Nodes.Coordinates().ToArray()));
 
-            var intersection = p0.Intersection(p1).Coordinates.Select(c => new Node(){Latitude = c.Y, Longitude = c.X});
+            var intersection = p0.Intersection(p1).Coordinates
+                .Select(c => new Node() {Latitude = c.Y, Longitude = c.X});
             return new CompleteWay()
             {
                 Nodes = intersection.ToArray()
             };
         }
-        
+
         public static double IntersectionSurfaceBetween(CompleteWay a, CompleteWay b)
         {
             var p0 = new Polygon(new LinearRing(a.Nodes.Coordinates().ToArray()));
             var p1 = new Polygon(new LinearRing(b.Nodes.Coordinates().ToArray()));
             try
             {
-
                 return p0.Intersection(p1).Area;
             }
             catch (Exception e)
@@ -172,6 +177,7 @@ namespace ANYWAYS.UrbanisticPolygons
             var p0 = new LineString(a.Nodes.Coordinates().ToArray());
             return p0.Length;
         }
+
         private static void FullSplit(CompleteWay toSplit, BBox splitBbox,
             CompleteWay splitter, BBox splitterBbox,
             ISet<(CompleteWay, BBox)> newSegments)

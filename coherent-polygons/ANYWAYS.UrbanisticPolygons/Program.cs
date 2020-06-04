@@ -27,6 +27,12 @@ namespace ANYWAYS.UrbanisticPolygons
 
         public static void PostProcess(this CompleteWay geometry)
         {
+
+            if (geometry == null)
+            {
+                throw new NullReferenceException("geometry");
+            }
+
             var biggestClassification = "";
             var biggestPercentage = 0.0;
 
@@ -110,7 +116,10 @@ namespace ANYWAYS.UrbanisticPolygons
             File.WriteAllText("polygons.geojson", polygons.Select(p => p.geometry).AsPolygonGeoJson());
             Console.WriteLine("Done");
 
-            var mergeFactor = new DefaultMergeFactorCalculator();
+
+            var target = 2*polygons.Average(t => t.geometry.Area());
+            Console.WriteLine("Target surface is " + target);
+            var mergeFactor = new DefaultMergeFactorCalculator(target);
             var merger = new PolygonMerger(polygons, DefaultMergeFactorCalculator.Barriers, graph, mergeFactor);
             var merged = merger.MergePolygons().ToList();
             merged.ForEach(PostProcess);

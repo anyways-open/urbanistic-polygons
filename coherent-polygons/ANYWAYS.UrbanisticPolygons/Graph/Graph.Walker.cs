@@ -122,7 +122,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
                 return null;
             }
 
-            polygon.Nodes[0] = polygon.Nodes.Last(); // SOmetimes, the start- and endpoint are different in the 10th digit after the dot, so we make sure they are the same
+            polygon.Nodes[0] = polygon.Nodes.Last(); // Sometimes, the start- and endpoint are different in the 10th digit after the dot, so we make sure they are the same
 
             return (polygon, edges);
         }
