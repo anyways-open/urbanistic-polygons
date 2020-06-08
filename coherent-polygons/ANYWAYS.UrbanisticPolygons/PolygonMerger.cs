@@ -14,16 +14,15 @@ namespace ANYWAYS.UrbanisticPolygons
 
     public class PolygonMerger
     {
-        private readonly WayWeight<int> _barriers;
         private readonly Graph.Graph _graph;
         private readonly IMergeFactorCalculator _merger;
+        private readonly uint _atMostNumberOfPolygons;
 
         private Dictionary<(long, long), HashSet<UrbanPolygon>> _edgeIndex;
-        private double _avgWeight;
 
 
         public PolygonMerger(IEnumerable<(CompleteWay geometry, List<(long, long)> edges)> polygonEdges,
-            WayWeight<int> barriers, Graph.Graph graph, IMergeFactorCalculator merger)
+            Graph.Graph graph, IMergeFactorCalculator merger, uint atMostNumberOfPolygons)
         {
             // So, we already made it this far. 
             // AT this point, we have polygon geometries encoded as graph edges (we don't care about the actual geometry at this point)
@@ -31,10 +30,9 @@ namespace ANYWAYS.UrbanisticPolygons
             // If an edge is shared, then the polygons can be merged
 
             var polygons = polygonEdges.Select(p => new UrbanPolygon(p.edges, p.geometry)).ToList();
-            _avgWeight = polygons.Average(p => p.Area);
-            _barriers = barriers;
             _graph = graph;
             _merger = merger;
+            _atMostNumberOfPolygons = atMostNumberOfPolygons;
 
             //  build an index of the polygons
             _edgeIndex = new Dictionary<(long, long), HashSet<UrbanPolygon>>();
@@ -102,11 +100,117 @@ namespace ANYWAYS.UrbanisticPolygons
             return newPolygon;
         }
 
+        private bool HasBoundaryEdge(UrbanPolygon polygon)
+        {
+            return polygon.EdgeIds
+                .Any(id =>
+                {
+                    var tags = _graph.GetGeometry(id).Tags;
+                    if (tags.TryGetValue("_tile_edge", out var v))
+                    {
+                        return v == "yes";
+                    }
+
+                    return false;
+                });
+        }
+
         public IEnumerable<CompleteWay> MergePolygons()
         {
-            var mergedCount = 0;
-            var mergedPolies = new HashSet<UrbanPolygon>();
+            var allPolygons = _edgeIndex.SelectMany(kv => kv.Value).ToHashSet();
 
+
+            var priorityQueue = BuildQueue();
+
+            var hasEdge = new HashSet<UrbanPolygon>();
+
+            foreach (var polygon in allPolygons)
+            {
+                if (HasBoundaryEdge(polygon))
+                {
+                    hasEdge.Add(polygon);
+                }
+            }
+
+            while (priorityQueue.Any() && allPolygons.Count - hasEdge.Count > _atMostNumberOfPolygons)
+            {
+                var smallest = allPolygons.Except(hasEdge).Min(p => p.Area);
+                var edgeToRemove = priorityQueue.Pop();
+
+                var polies = _edgeIndex[edgeToRemove.edgeId];
+                if (polies.Count == 1)
+                {
+                    continue;
+                }
+
+                var polyA = polies.First();
+                var polyB = polies.Last();
+
+                var newPoly = Merge(polyA, polyB);
+
+                allPolygons.Remove(polyA);
+                allPolygons.Remove(polyB);
+                allPolygons.Add(newPoly);
+
+                hasEdge.Remove(polyA);
+                hasEdge.Remove(polyB);
+                if (HasBoundaryEdge(newPoly))
+                {
+                    hasEdge.Add(newPoly);
+                }
+
+                RemovePolygon(polyA);
+                RemovePolygon(polyB);
+                AddPolygon(newPoly);
+
+
+                priorityQueue = UpdateQueue(priorityQueue, polyA, polyB, newPoly);
+            }
+
+            return allPolygons.Select(p => p.AsWay());
+        }
+
+        private List<((long, long) edgeId, double priority)> UpdateQueue(
+            List<((long, long) edgeId, double priority)> priorityQueue, UrbanPolygon polyA, UrbanPolygon polyB,
+            UrbanPolygon newPoly)
+        {
+            // All the edges have to be recalculated
+            // TODO This is not really performant
+            var newQueue = new List<((long, long) edgeId, double priority)>();
+
+            foreach (var (edgeId, priority) in priorityQueue)
+            {
+                if (polyA.EdgeIds.Contains(edgeId) || polyB.EdgeIds.Contains(edgeId))
+                {
+                    continue;
+                }
+
+                newQueue.Add((edgeId, priority));
+            }
+
+            foreach (var edgeId in newPoly.EdgeIds)
+            {
+                var sharedBy = _edgeIndex[edgeId];
+                var a = sharedBy.First();
+                var b = sharedBy.Last();
+
+                var sharedEdges = a.EdgeIds.Intersect(b.EdgeIds);
+
+                var mergeProb = _merger.MergeImportance(a, b, sharedEdges, _graph);
+                newQueue.Add((edgeId, mergeProb));
+            }
+
+            return newQueue.OrderBy(e => e.priority).ToList();
+        }
+
+        /// <summary>
+        ///
+        /// Builds the initial priority queue
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        private List<((long, long) edgeId, double priority)> BuildQueue()
+        {
             // We create a queue of edges sorted by their merge probability
             var priorityQueue = new List<((long, long) edgeId, double priority)>();
 
@@ -134,70 +238,7 @@ namespace ANYWAYS.UrbanisticPolygons
 
             // Note: we use the priority queue as a stack, so we but the highest values to the back
             priorityQueue = priorityQueue.OrderBy(e => e.priority).ToList();
-
-            var merged = 0;
-            while (priorityQueue.Any())
-            {
-                var edgeToRemove = priorityQueue.Pop();
-
-                // WHOOP WHOOP
-                // IS DA SOUND OF DA
-                var polies = _edgeIndex[edgeToRemove.edgeId];
-                if (polies.Count == 1)
-                {
-                    continue;
-                }
-
-                var polyA = polies.First();
-                var polyB = polies.Last();
-
-                var newPoly = Merge(polyA, polyB);
-
-                mergedPolies.Add(newPoly);
-                if (merged >= 350)
-                {
-                    break;
-                }
-
-                merged++;
-
-
-                RemovePolygon(polyA);
-                RemovePolygon(polyB);
-                AddPolygon(newPoly);
-                mergedPolies.Remove(polyA);
-                mergedPolies.Remove(polyB);
-
-                // All the edges have to be recalculated
-                // TODO This is not really performant
-                var newQueue = new List<((long, long) edgeId, double priority)>();
-
-                foreach (var (edgeId, priority) in priorityQueue)
-                {
-                    if (polyA.EdgeIds.Contains(edgeId) || polyB.EdgeIds.Contains(edgeId))
-                    {
-                        continue;
-                    }
-
-                    newQueue.Add((edgeId, priority));
-                }
-
-                foreach (var edgeId in newPoly.EdgeIds)
-                {
-                    var sharedBy = _edgeIndex[edgeId];
-                    var a = sharedBy.First();
-                    var b = sharedBy.Last();
-
-                    var sharedEdges = a.EdgeIds.Intersect(b.EdgeIds);
-
-                    var mergeProb = _merger.MergeImportance(a, b, sharedEdges, _graph);
-                    newQueue.Add((edgeId, mergeProb));
-                }
-
-                priorityQueue = newQueue.OrderBy(e => e.priority).ToList();
-            }
-
-            return mergedPolies.Select(p => p.AsWay());
+            return priorityQueue;
         }
 
         private void RemovePolygon(UrbanPolygon polygon)
@@ -210,53 +251,6 @@ namespace ANYWAYS.UrbanisticPolygons
             }
         }
 
-        private static void RemoveAndAdd(IList<UrbanPolygon> queueByArea, int start, UrbanPolygon toRemove,
-            UrbanPolygon toAdd)
-        {
-            var i = start;
-            for (; i < queueByArea.Count; i++)
-            {
-                if (queueByArea[i].Id == toRemove.Id)
-                {
-                    break;
-                }
-            }
-
-            // At this point, i should be removed
-            // We fill i with the next polygon (either toAdd or the next in the list)
-            for (;
-                i < queueByArea.Count;
-                i++)
-            {
-                if (i + 1 == queueByArea.Count)
-                {
-                    // We have reached the end of the list, the toAdd polygon is the biggest
-                    queueByArea[i] = toAdd;
-                    return;
-                }
-
-                if (toAdd.Area <= queueByArea[i + 1].Area)
-                {
-                    queueByArea[i] = toAdd;
-                    return;
-                }
-
-                queueByArea[i] = queueByArea[i + 1];
-            }
-        }
-
-        private bool ContainsTileEdge(UrbanPolygon p)
-        {
-            return p.EdgeIds.Any(id =>
-                _graph.GetGeometry(id).Tags.TryGetValue("_tile_edge", out var v) && v.Equals("yes"));
-        }
-
-
-        private HashSet<UrbanPolygon> Neighbours(UrbanPolygon p)
-        {
-            return p.EdgeIds.SelectMany(
-                id => _edgeIndex[id].Where(polygon => polygon.Id != p.Id)).ToHashSet();
-        }
 
         private void AddPolygon(UrbanPolygon p)
         {

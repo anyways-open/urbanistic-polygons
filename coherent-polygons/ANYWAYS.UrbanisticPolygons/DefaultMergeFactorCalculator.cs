@@ -164,7 +164,7 @@ namespace ANYWAYS.UrbanisticPolygons
 
             if (perimeterDiff < 0)
             {
-                // THe polygons are quite similar and they fuse to something more compact!
+                // The polygons are quite similar and they fuse to something more compact!
                 return 1000000;
             }
 

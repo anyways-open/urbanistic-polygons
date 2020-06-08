@@ -14,4 +14,13 @@
       <PackageReference Include="OsmSharp.Streams.Filters.Polygons" Version="14.0.0" />
     </ItemGroup>
 
+
+
+  <ItemGroup>
+    <None Update="data/*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+
 </Project>

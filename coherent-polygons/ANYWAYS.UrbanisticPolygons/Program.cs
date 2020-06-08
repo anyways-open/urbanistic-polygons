@@ -117,10 +117,10 @@ namespace ANYWAYS.UrbanisticPolygons
             Console.WriteLine("Done");
 
 
-            var target = 2*polygons.Average(t => t.geometry.Area());
+            var target = polygons.Average(t => t.geometry.Area());
             Console.WriteLine("Target surface is " + target);
-            var mergeFactor = new DefaultMergeFactorCalculator(target);
-            var merger = new PolygonMerger(polygons, DefaultMergeFactorCalculator.Barriers, graph, mergeFactor);
+            var mergeFactor = new DefaultMergeFactorCalculator(target*3.0);
+            var merger = new PolygonMerger(polygons, graph, mergeFactor, 100);
             var merged = merger.MergePolygons().ToList();
             merged.ForEach(PostProcess);
             File.WriteAllText("polygonsMerged.geojson", merged.AsPolygonGeoJson());
