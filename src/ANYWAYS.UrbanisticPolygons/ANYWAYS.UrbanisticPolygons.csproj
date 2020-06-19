@@ -5,6 +5,7 @@
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <RootNamespace>ANYWAYS.UrbanisticPolygons</RootNamespace>
         <AssemblyName>ANYWAYS.UrbanisticPolygons</AssemblyName>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>

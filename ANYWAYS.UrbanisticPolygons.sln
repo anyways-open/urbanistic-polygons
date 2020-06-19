@@ -8,11 +8,17 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ANYWAYS.UrbanisticPolygons", "src\ANYWAYS.UrbanisticPolygons\ANYWAYS.UrbanisticPolygons.csproj", "{3BF1AB74-E923-42E6-A0B9-EBC28A4FCE24}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{550BF7E4-54D0-4591-B3C6-A0900B4C7B01}"
-ProjectSection(SolutionItems) = preProject
-	LICENSE = LICENSE
-	README.md = README.md
-	.gitignore = .gitignore
-EndProjectSection
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{039923A0-77A6-49E6-BC60-8077EB16A275}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ANYWAYS.UrbanisticPolygons.Tests", "test\ANYWAYS.UrbanisticPolygons.Tests\ANYWAYS.UrbanisticPolygons.Tests.csproj", "{C0A51DFE-CC84-4DB6-9145-E43EF255261E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ANYWAYS.UrbanisticPolygons.Tests.Functional", "test\ANYWAYS.UrbanisticPolygons.Tests.Functional\ANYWAYS.UrbanisticPolygons.Tests.Functional.csproj", "{0402FBE8-A79D-499C-9490-30025D1C763C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,8 +45,34 @@ Global
 		{3BF1AB74-E923-42E6-A0B9-EBC28A4FCE24}.Release|x64.Build.0 = Release|Any CPU
 		{3BF1AB74-E923-42E6-A0B9-EBC28A4FCE24}.Release|x86.ActiveCfg = Release|Any CPU
 		{3BF1AB74-E923-42E6-A0B9-EBC28A4FCE24}.Release|x86.Build.0 = Release|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Debug|x64.Build.0 = Debug|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Debug|x86.Build.0 = Debug|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Release|x64.ActiveCfg = Release|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Release|x64.Build.0 = Release|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Release|x86.ActiveCfg = Release|Any CPU
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E}.Release|x86.Build.0 = Release|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Debug|x64.Build.0 = Debug|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Debug|x86.Build.0 = Debug|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Release|x64.ActiveCfg = Release|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Release|x64.Build.0 = Release|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Release|x86.ActiveCfg = Release|Any CPU
+		{0402FBE8-A79D-499C-9490-30025D1C763C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3BF1AB74-E923-42E6-A0B9-EBC28A4FCE24} = {24D60C85-061B-4F29-8DC8-3C20E6B31618}
+		{C0A51DFE-CC84-4DB6-9145-E43EF255261E} = {039923A0-77A6-49E6-BC60-8077EB16A275}
+		{0402FBE8-A79D-499C-9490-30025D1C763C} = {039923A0-77A6-49E6-BC60-8077EB16A275}
 	EndGlobalSection
 EndGlobal

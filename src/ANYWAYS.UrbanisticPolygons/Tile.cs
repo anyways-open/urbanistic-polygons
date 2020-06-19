@@ -327,6 +327,14 @@ namespace ANYWAYS.UrbanisticPolygons
         /// <summary>
         /// Calculates the tile id of the tile at position (x, y) for the given zoom.
         /// </summary>
+        internal static ulong CalculateTileId(int zoom, (int x, int y) tile)
+        {
+            return CalculateTileId(zoom, tile.x, tile.y);
+        }
+
+        /// <summary>
+        /// Calculates the tile id of the tile at position (x, y) for the given zoom.
+        /// </summary>
         /// <param name="zoom"></param>
         /// <param name="x"></param>
         /// <param name="y"></param>
