@@ -30,6 +30,9 @@ namespace ANYWAYS.UrbanisticPolygons
             
             // mark tile as loaded.
             graph.SetTileLoaded(tile);
+            
+            // prune graph.
+            graph.PruneDeadEnds();
         }
         
         private static void AddFrom(this TiledBarrierGraph graph, IEnumerable<OsmGeo> osmGeos,

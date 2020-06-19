@@ -9,13 +9,22 @@
 // {
 //     internal static class Polygonizer
 //     {
-//         public static PolygonGraph GetPolygonsGraph(uint tile, Func<uint, IEnumerable<OsmGeo>> getTile,
+//         public static IEnumerable<object> GetPolygons(uint tile, Func<uint, IEnumerable<OsmGeo>> getTile,
 //             Func<TagsCollectionBase, bool> isBarrier)
 //         {
 //             // load the tile in the barrier graph.
 //             var tileData = getTile(tile);
 //             var barrierGraph = new TiledBarrierGraph(14);
 //             barrierGraph.AddTile(tile, tileData, isBarrier);
+//             
+//             // for each vertex in the the given tile:
+//             // - determine the faces for the edges in those vertices.
+//             // 
+//         }
+//         
+//         public static PolygonGraph GetPolygonsGraph(uint tile, Func<uint, IEnumerable<OsmGeo>> getTile,
+//             Func<TagsCollectionBase, bool> isBarrier)
+//         {
 //             
 //             // create the dual polygon graph.
 //             var polygonGraph = new PolygonGraph();

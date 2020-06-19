@@ -1,6 +1,5 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Algorithm;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
@@ -83,6 +82,61 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 if (split) v1--;
             }
         }
+        
+        internal static void PruneDeadEnds(this TiledBarrierGraph graph)
+        {
+            var queue = new Queue<int>();
+            
+            var enumerator = graph.GetEnumerator();
+            for (var v = 0; v < graph.VertexCount; v++)
+            {
+                if (!enumerator.MoveTo(v)) continue;
+                if (!enumerator.MoveNext()) continue;
+                if (enumerator.MoveNext()) continue;
+                
+                // vertex has only neighbour.
+                enumerator.MoveTo(v);
+                enumerator.MoveNext();
+                
+                if (enumerator.Vertex2 == v) continue; // we leave in the tiny one-edge sized islands.
+                if (!enumerator.IsInLoadedTile()) continue; // we cannot prune edges that may be incomplete.
+                
+                queue.Enqueue(enumerator.Vertex2);
+                graph.DeleteEdge(enumerator.Edge);
+            }
+
+            while (queue.Count > 0)
+            {
+                var v = queue.Dequeue();
+                
+                if (!enumerator.MoveTo(v)) continue;
+                if (!enumerator.MoveNext()) continue;
+                if (enumerator.MoveNext()) continue;
+                
+                // vertex has only neighbour.
+                enumerator.MoveTo(v);
+                enumerator.MoveNext();
+                
+                if (enumerator.Vertex2 == v) continue; // we leave in the tiny one-edge sized islands.
+                if (!enumerator.IsInLoadedTile()) continue; // we cannot prune edges that may be incomplete.
+                
+                queue.Enqueue(enumerator.Vertex2);
+                graph.DeleteEdge(enumerator.Edge);
+            }
+        }
+        
+        internal static bool IsInLoadedTile(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
+        {
+            var zoom = enumerator.Graph.Zoom;
+            var graph = enumerator.Graph;
+            foreach (var location in enumerator.CompleteShape())
+            {
+                var locationTile = TileStatic.WorldToTile(location.longitude, location.latitude, zoom);
+                if (!graph.HasTile(TileStatic.ToLocalId(locationTile, zoom))) return false;
+            }
+
+            return true;
+        }
 
         internal static IEnumerable<(double longitude, double latitude)> CompleteShape(
             this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
@@ -94,7 +148,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 var i = s;
                 if (!enumerator.Forward)
                 {
-                    i = enumerator.Shape.Length - s;
+                    i = enumerator.Shape.Length - s - 1;
                 }
 
                 var sp = enumerator.Shape[i];
@@ -176,17 +230,18 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             {
                 if (!enumerator.MoveTo(v)) continue;
 
-                yield return new Feature(graph.ToPoint(v), new AttributesTable {{"vertex", v}});
-
+                bool hasEdge = false;
                 while (enumerator.MoveNext())
                 {
                     if (!enumerator.Forward) continue;
 
                     var lineString = enumerator.ToLineString();
                     var attributes = enumerator.Tags.ToAttributeTable();
-                    
+
+                    hasEdge = true;
                     yield return new Feature(lineString, attributes);
                 }
+                if (hasEdge) yield return new Feature(graph.ToPoint(v), new AttributesTable {{"vertex", v}});
             }
         }
 
