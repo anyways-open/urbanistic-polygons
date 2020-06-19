@@ -12,41 +12,68 @@ namespace ANYWAYS.UrbanisticPolygons
 {
     internal static class BarrierGraphBuilder
     {
-        internal static void AddTile(this TiledBarrierGraph graph, uint tile, IEnumerable<OsmGeo> osmGeos,
+        internal static void LoadForTile(this TiledBarrierGraph graph, uint tile,
+            Func<uint, IEnumerable<OsmGeo>> getTile,
             Func<TagsCollectionBase, bool> isBarrier)
         {
-            // build 'isVertex' function.
-            // force nodes outside the current tile to be vertices.
-            // we don't know yet what intersections may exist.
-            bool IsVertex((double longitude, double latitude) location)
-            {
-                var (x, y) = TileStatic.WorldToTile(location.longitude, location.latitude, 
-                    graph.Zoom);
-                return TileStatic.ToLocalId(x, y, graph.Zoom) != tile;
-            }
-            
-            // add the data.
-            graph.AddFrom(osmGeos, isBarrier, IsVertex);
-            
             // mark tile as loaded.
             graph.SetTileLoaded(tile);
             
-            // prune graph.
-            graph.PruneDeadEnds();
+            // first load the tile in question.
+            var tileData = getTile(tile);
+            graph.AddNonPlanar(tileData, isBarrier);
+            
+            // load other tiles until all edges with at least one vertex in the request tile are fully loaded.
+            var extraTiles = new HashSet<uint>();
+            var enumerator = graph.GetEnumerator();
+            for (var v = 0; v < graph.VertexCount; v++)
+            {
+                if (!enumerator.MoveTo(v)) continue;
+
+                while (enumerator.MoveNext())
+                {
+                    foreach (var edgeTile in enumerator.GetTiles())
+                    {
+                        if (edgeTile == tile) continue;
+
+                        extraTiles.Add(edgeTile);
+                    }
+                }
+            }
+            
+            // add all the tiles.
+            graph.AddTiles(extraTiles, getTile, isBarrier);
         }
         
-        private static void AddFrom(this TiledBarrierGraph graph, IEnumerable<OsmGeo> osmGeos,
-            Func<TagsCollectionBase, bool> isBarrier, Func<(double longitude, double latitude), bool> isVertex = null)
+        internal static void AddTiles(this TiledBarrierGraph graph, IEnumerable<uint> tiles,
+            Func<uint, IEnumerable<OsmGeo>> getTile,
+            Func<TagsCollectionBase, bool> isBarrier)
         {
-            // add the new data without flattening.
-            var newEdges = graph.AddNonPlanar(osmGeos, isBarrier, isVertex);
+            // load other tiles.
+            var newEdges = new HashSet<int>();
+            foreach (var tile in tiles)
+            {
+                // mark tile as loaded.
+                graph.SetTileLoaded(tile);
+                
+                // get the data and load it.
+                var tileData = getTile(tile);
+                var extraTileNewEdges = graph.AddNonPlanar(tileData, isBarrier);
+                
+                // keep new edges.
+                newEdges.UnionWith(extraTileNewEdges);
+            }
             
-            // flatten graph.
-            graph.Flatten(newEdges);
+            // flatten the graph.
+            graph.Flatten();
+            
+            // prune graph.
+            graph.PruneDeadEnds();
+            // graph.PruneShapePoints();
         }
         
         private static IEnumerable<int> AddNonPlanar(this TiledBarrierGraph graph, IEnumerable<OsmGeo> osmGeos,
-            Func<TagsCollectionBase, bool> isBarrier, Func<(double longitude, double latitude), bool> isVertex = null)
+            Func<TagsCollectionBase, bool> isBarrier)
         {
             // collect all nodes with more than one barrier way.
             var nodes = new Dictionary<long, (double longitude, double latitude)>();
@@ -94,12 +121,13 @@ namespace ANYWAYS.UrbanisticPolygons
                 if (graph.TryGetVertex(node.Id.Value, out _)) continue;
                 if (!nodes.ContainsKey(node.Id.Value)) continue; // not part of a barrier way.
                 
-                var nodeLocation = (node.Longitude.Value, node.Latitude.Value);
-                nodes[node.Id.Value] = nodeLocation;
-                
-                if (!vertexNodes.ContainsKey(node.Id.Value) && !isVertex(nodeLocation)) continue;
+                nodes[node.Id.Value] = (node.Longitude.Value, node.Latitude.Value);
 
-                vertexNodes[node.Id.Value] = graph.AddVertex(node.Longitude.Value, node.Latitude.Value);
+                if (!vertexNodes.ContainsKey(node.Id.Value) && 
+                    graph.HasTile(TileStatic.WorldTileLocalId(node.Longitude.Value, node.Latitude.Value, graph.Zoom)))
+                    continue; // node is not a vertex and inside a loaded tile.
+
+                vertexNodes[node.Id.Value] = graph.AddVertex(node.Longitude.Value, node.Latitude.Value, node.Id.Value);
             }
             
             // add all edges.
@@ -109,7 +137,6 @@ namespace ANYWAYS.UrbanisticPolygons
             {
                 if (!hasNext) break;
                 
-                Console.WriteLine($"Processing: {enumerator.Current}");
                 if (!(enumerator.Current is Way way)) break;
                 if (way.Nodes == null || way.Tags == null || way.Id == null)
                 {

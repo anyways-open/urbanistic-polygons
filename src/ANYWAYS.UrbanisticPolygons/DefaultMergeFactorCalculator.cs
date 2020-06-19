@@ -12,8 +12,6 @@ namespace ANYWAYS.UrbanisticPolygons
         /// Barrier resistance for not-similar areas
         /// </summary>
         public static WayWeight<int> Barriers = new WayWeight<int>(
-            ("highway", "service", 1),
-            ("highway", "pedestrian", 1),
             ("highway", "living_street", 1),
             ("highway", "residential", 2),
             ("highway", "track", 1),

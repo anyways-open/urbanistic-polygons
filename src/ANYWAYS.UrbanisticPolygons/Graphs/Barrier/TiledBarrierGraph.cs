@@ -38,6 +38,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             _tiles.Add(tile);
         }
 
+        public IEnumerable<uint> LoadedTiles()
+        {
+            return _tiles;
+        }
+
         public bool HasTile(uint tile)
         {
             return _tiles.Contains(tile);

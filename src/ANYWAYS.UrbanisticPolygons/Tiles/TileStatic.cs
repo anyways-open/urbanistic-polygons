@@ -73,6 +73,12 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
             longitude = left + (lonStep * x);
             latitude = top - (y * latStep);
         }
+
+        public static uint WorldTileLocalId(double longitude, double latitude, int zoom)
+        {
+            var tile = WorldToTile(longitude, latitude, zoom);
+            return ToLocalId(tile, zoom);
+        }
         
         public static (uint x, uint y) WorldToTile(double longitude, double latitude, int zoom)
         {

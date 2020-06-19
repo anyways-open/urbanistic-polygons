@@ -20,20 +20,5 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
         {
             return (new GeoJsonWriter()).Write(featureCollection);
         }
-
-        public static Feature ToBboxFeature(int zoom, uint tileId)
-        {
-            var box = TileStatic.Box(zoom, tileId);
-            var polygon = new Polygon(new LinearRing(new []
-            {
-                new Coordinate(box.left, box.top), 
-                new Coordinate(box.right, box.top), 
-                new Coordinate(box.right, box.bottom), 
-                new Coordinate(box.left, box.bottom), 
-                new Coordinate(box.left, box.top)
-            }));
-            
-            return new Feature(polygon, new AttributesTable{{"tile_id", tileId},{"zoom", zoom}});
-        }
     }
 }

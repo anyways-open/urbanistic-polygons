@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Algorithm;
 using NetTopologySuite.Features;
@@ -82,6 +84,49 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 if (split) v1--;
             }
         }
+
+        internal static void PruneShapePoints(this TiledBarrierGraph graph)
+        {
+            var enumerator = graph.GetEnumerator();
+            for (var v = 0; v < graph.VertexCount; v++)
+            {
+                if (!enumerator.MoveTo(v)) continue;
+                if (!enumerator.MoveNext()) continue;
+                if (!enumerator.MoveNext()) continue;
+                if (enumerator.MoveNext()) continue;
+
+                // vertex has exactly two neighbours.
+                // check if they match.
+                enumerator.MoveTo(v);
+                enumerator.MoveNext();
+                var vertex1 = enumerator.Vertex2;
+                var edge1 = enumerator.Edge;
+                var tags1 = enumerator.Tags;
+                var shape1 = enumerator.CompleteShape().ToList();
+                if (!enumerator.IsInLoadedTile()) continue;
+                enumerator.MoveNext();
+                var vertex2 = enumerator.Vertex2;
+                var edge2 = enumerator.Edge;
+                var tags2 = enumerator.Tags;
+                var shape2 = enumerator.CompleteShape().ToList();
+                if (!tags1.Equals(tags2)) continue;
+                if (!enumerator.IsInLoadedTile()) continue;
+
+                // both have identical tags and are completely in a loaded tile.
+
+                // add a new edge.
+                var shape = new List<(double longitude, double latitude)>();
+                shape1.Reverse();
+                shape.AddRange(shape1.GetRange(1, shape1.Count - 2));
+                shape.Add(graph.GetVertex(v));
+                shape.AddRange(shape2.GetRange(1, shape2.Count - 2));
+                graph.AddEdge(vertex1, vertex2, shape, tags1);
+
+                // remove old edges.
+                graph.DeleteEdge(edge1);
+                graph.DeleteEdge(edge2);
+            }
+        }
         
         internal static void PruneDeadEnds(this TiledBarrierGraph graph)
         {
@@ -94,14 +139,14 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 if (!enumerator.MoveNext()) continue;
                 if (enumerator.MoveNext()) continue;
                 
-                // vertex has only neighbour.
+                // vertex has only one neighbour.
                 enumerator.MoveTo(v);
                 enumerator.MoveNext();
                 
                 if (enumerator.Vertex2 == v) continue; // we leave in the tiny one-edge sized islands.
                 if (!enumerator.IsInLoadedTile()) continue; // we cannot prune edges that may be incomplete.
                 
-                queue.Enqueue(enumerator.Vertex2);
+                if (enumerator.Vertex2 < v) queue.Enqueue(enumerator.Vertex2);
                 graph.DeleteEdge(enumerator.Edge);
             }
 
@@ -113,7 +158,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 if (!enumerator.MoveNext()) continue;
                 if (enumerator.MoveNext()) continue;
                 
-                // vertex has only neighbour.
+                // vertex has only one neighbour.
                 enumerator.MoveTo(v);
                 enumerator.MoveNext();
                 
@@ -124,17 +169,24 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 graph.DeleteEdge(enumerator.Edge);
             }
         }
-        
-        internal static bool IsInLoadedTile(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
+
+        internal static IEnumerable<uint> GetTiles(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
         {
             var zoom = enumerator.Graph.Zoom;
-            var graph = enumerator.Graph;
             foreach (var location in enumerator.CompleteShape())
             {
                 var locationTile = TileStatic.WorldToTile(location.longitude, location.latitude, zoom);
-                if (!graph.HasTile(TileStatic.ToLocalId(locationTile, zoom))) return false;
+                yield return TileStatic.ToLocalId(locationTile, zoom);
             }
-
+        }
+        
+        internal static bool IsInLoadedTile(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
+        {
+            var graph = enumerator.Graph;
+            foreach (var tile in enumerator.GetTiles())
+            {
+                if (!graph.HasTile(tile)) return false;
+            }
             return true;
         }
 
@@ -225,6 +277,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
         internal static IEnumerable<Feature> ToFeatures(this TiledBarrierGraph graph)
         {
+            foreach (var tileFeature in graph.ToTileFeatures())
+            {
+                yield return tileFeature;
+            }
+            
             var enumerator = graph.GetEnumerator();
             for (var v = 0; v < graph.VertexCount; v++)
             {
@@ -233,15 +290,33 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 bool hasEdge = false;
                 while (enumerator.MoveNext())
                 {
+                    hasEdge = true;
                     if (!enumerator.Forward) continue;
 
                     var lineString = enumerator.ToLineString();
                     var attributes = enumerator.Tags.ToAttributeTable();
 
-                    hasEdge = true;
                     yield return new Feature(lineString, attributes);
                 }
                 if (hasEdge) yield return new Feature(graph.ToPoint(v), new AttributesTable {{"vertex", v}});
+            }
+        }
+
+        private static IEnumerable<Feature> ToTileFeatures(this TiledBarrierGraph graph)
+        {
+            foreach (var tile in graph.LoadedTiles())
+            {
+                var box = TileStatic.Box(graph.Zoom, tile);
+                var polygon = new NetTopologySuite.Geometries.Polygon(new LinearRing(new []
+                {
+                    new Coordinate(box.left, box.top), 
+                    new Coordinate(box.right, box.top), 
+                    new Coordinate(box.right, box.bottom), 
+                    new Coordinate(box.left, box.bottom), 
+                    new Coordinate(box.left, box.top)
+                }));
+            
+                yield return new Feature(polygon, new AttributesTable{{"tile_id", tile},{"zoom", graph.Zoom}});
             }
         }
 

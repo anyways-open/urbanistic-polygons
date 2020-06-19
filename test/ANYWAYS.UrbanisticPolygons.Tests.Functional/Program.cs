@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Tests.Functional.Download;
@@ -44,13 +45,12 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             }
             
             var barriers = new TiledBarrierGraph();
-            barriers.AddTile(tile, GetTile(tile), IsBarrier);
+            barriers.LoadForTile(tile, GetTile, IsBarrier);
             
             var features = new FeatureCollection();
             features.AddRange(barriers.ToFeatures());
-            features.Add(NTSExtensions.ToBboxFeature(14, tile));
 
-            var json = features.ToGeoJson();
+            File.WriteAllText("barriers.geojson", features.ToGeoJson());
         }
     }
 }
