@@ -45,7 +45,8 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             }
             
             var barriers = new TiledBarrierGraph();
-            barriers.LoadForTile(tile, GetTile, IsBarrier);
+
+            ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces.Faces.AssignFaces(barriers, tile, GetTile, IsBarrier);
             
             var features = new FeatureCollection();
             features.AddRange(barriers.ToFeatures());

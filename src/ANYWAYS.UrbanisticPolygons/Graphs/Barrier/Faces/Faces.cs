@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using OsmSharp;
 using OsmSharp.Tags;
 
+[assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests.Functional")]
 namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
 {
     internal static class Faces

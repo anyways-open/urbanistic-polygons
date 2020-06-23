@@ -309,7 +309,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                     if (!enumerator.Forward) continue;
 
                     var lineString = enumerator.ToLineString();
-                    var attributes = enumerator.Tags.ToAttributeTable();
+                    var attributes = enumerator.ToAttributeTable();
 
                     yield return new Feature(lineString, attributes);
                 }
@@ -364,6 +364,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             coordinates[^1] = new Coordinate(vertex2Location.longitude, vertex2Location.latitude);
             
             return new LineString(coordinates);
+        }
+
+        internal static AttributesTable ToAttributeTable(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
+        {
+            var attributes = enumerator.Tags.ToAttributeTable();
+
+            attributes.Add("face_left", enumerator.FaceLeft);
+            attributes.Add("face_right", enumerator.FaceRight);
+
+            return attributes;
         }
     }
 }
