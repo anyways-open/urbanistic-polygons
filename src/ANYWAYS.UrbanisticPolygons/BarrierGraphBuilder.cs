@@ -44,6 +44,14 @@ namespace ANYWAYS.UrbanisticPolygons
             // add all the tiles.
             graph.AddTiles(extraTiles, getTile, isBarrier);
         }
+
+        internal static void AddTileFor(this TiledBarrierGraph graph, int vertex, Func<uint, IEnumerable<OsmGeo>> getTile,
+            Func<TagsCollectionBase, bool> isBarrier)
+        {
+            var vLocation = graph.GetVertex(vertex);
+            var t = TileStatic.WorldTileLocalId(vLocation.longitude, vLocation.latitude, graph.Zoom);
+            graph.AddTiles(new[] {t}, getTile, isBarrier);
+        }
         
         internal static void AddTiles(this TiledBarrierGraph graph, IEnumerable<uint> tiles,
             Func<uint, IEnumerable<OsmGeo>> getTile,
@@ -69,7 +77,7 @@ namespace ANYWAYS.UrbanisticPolygons
             
             // prune graph.
             graph.PruneDeadEnds();
-            // graph.PruneShapePoints();
+            graph.PruneShapePoints();
         }
         
         private static IEnumerable<int> AddNonPlanar(this TiledBarrierGraph graph, IEnumerable<OsmGeo> osmGeos,

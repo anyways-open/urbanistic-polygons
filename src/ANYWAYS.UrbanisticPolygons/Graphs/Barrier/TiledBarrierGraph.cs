@@ -1,7 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using ANYWAYS.UrbanisticPolygons.Tiles;
 using OsmSharp.Tags;
 
 [assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests")]
@@ -9,7 +9,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 {
     internal class TiledBarrierGraph
     {
-        private readonly Graph<(double lon, double lat), BarrierGraphEdge> _graph = new Graph<(double lon, double lat), BarrierGraphEdge>();
+        private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face> _graph = new Graph<(double lon, double lat), BarrierGraphEdge, Face>();
         private readonly Dictionary<long, int> _vertexNodes = new Dictionary<long, int>();
         private readonly HashSet<long> _ways = new HashSet<long>();
         private readonly HashSet<uint> _tiles = new HashSet<uint>();
@@ -22,6 +22,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         public int Zoom { get; }
 
         public int VertexCount => _graph.VertexCount;
+
+        public int FaceCount => _graph.FaceCount;
 
         public bool TryGetVertex(long node, out int vertex)
         {
@@ -79,6 +81,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         {
             _graph.DeleteEdge(edge);
         }
+
+        public int AddFace()
+        {
+            return _graph.AddFace(default);
+        }
+
+        public void SetFace(int edge, bool left, int face)
+        {
+            _graph.SetFace(edge, left, face);
+        }
         
         public BarrierGraphEnumerator GetEnumerator()
         {
@@ -92,9 +104,14 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             public TagsCollectionBase Tags { get; set; }
         }
 
+        private struct Face
+        {
+            
+        }
+
         public class BarrierGraphEnumerator
         {
-            private readonly Graph<(double lon, double lat), BarrierGraphEdge>.Enumerator _enumerator;
+            private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face>.Enumerator _enumerator;
 
             public BarrierGraphEnumerator(TiledBarrierGraph graph)
             {
@@ -122,6 +139,10 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             public int Vertex2 => _enumerator.Vertex2;
 
             public bool Forward => _enumerator.Forward;
+
+            public int FaceLeft => _enumerator.FaceLeft;
+
+            public int FaceRight => _enumerator.FaceRight;
 
             public (double longitude, double latitude)[] Shape => _enumerator.Data.Shape;
 

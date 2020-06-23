@@ -1,35 +1,169 @@
-// using System.Collections.Generic;
-//
-// namespace ANYWAYS.UrbanisticPolygons
-// {
-//     /// <summary>
-//     /// Contains extension methods to work with coordinates, lines, bounding boxes and basic spatial operations.
-//     /// </summary>
-//     public static class GeoExtensions
-//     {
-//         internal const double RadiusOfEarth = 6371000;
-//         
-//         /// <summary>
-//         /// Returns an estimate of the distance between the two given coordinates.
-//         /// </summary>
-//         /// <param name="coordinate1">The first coordinate.</param>
-//         /// <param name="coordinate2">The second coordinate.</param>
-//         /// <remarks>Accuracy decreases with distance.</remarks>
-//         public static double DistanceEstimateInMeter(this (double longitude, double latitude) coordinate1, 
-//             (double longitude, double latitude) coordinate2)
-//         {
-//             var lat1Rad = (coordinate1.latitude / 180d) * System.Math.PI;
-//             var lon1Rad = (coordinate1.longitude / 180d) * System.Math.PI;
-//             var lat2Rad = (coordinate2.latitude / 180d) * System.Math.PI;
-//             var lon2Rad = (coordinate2.longitude / 180d) * System.Math.PI;
-//
-//             var x = (lon2Rad - lon1Rad) * System.Math.Cos((lat1Rad + lat2Rad) / 2.0);
-//             var y = lat2Rad - lat1Rad;
-//
-//             var m = System.Math.Sqrt(x * x + y * y) * RadiusOfEarth;
-//
-//             return m;
-//         }
+using System;
+using System.Collections.Generic;
+
+namespace ANYWAYS.UrbanisticPolygons
+{
+    /// <summary>
+    /// Contains extension methods to work with coordinates, lines, bounding boxes and basic spatial operations.
+    /// </summary>
+    internal static class GeoExtensions
+    {
+        private const double E = 0.0000000001;
+        private const double RadiusOfEarth = 6371000;
+
+        public static double Angle((double longitude, double latitude) coordinate1, (double longitude, double latitude) coordinate2, 
+            (double longitude, double latitude) coordinate3)
+        {
+            var v11 = coordinate1.latitude - coordinate2.latitude;
+            var v10 = coordinate1.longitude - coordinate2.longitude;
+
+            var v21 = coordinate3.latitude - coordinate2.latitude;
+            var v20 = coordinate3.longitude - coordinate2.longitude;
+
+            var v1size = System.Math.Sqrt(v11 * v11 + v10 * v10);
+            var v2size = System.Math.Sqrt(v21 * v21 + v20 * v20);
+
+            if (Math.Abs(v1size) < E || Math.Abs(v2size) < E)
+            {
+                return double.NaN;
+            }
+
+            var dot = (v11 * v21 + v10 * v20);
+            var cross = (v10 * v21 - v11 * v20);
+
+            if (Math.Abs(cross) < E)
+            {
+                // The cross product is pretty small, the points are close to each other
+                // This either means we are at 180° or 360°, depending on the dot product
+                if (dot < 0)
+                {
+                    return Math.PI;
+                }
+                else
+                {
+                    return (2 * Math.PI);
+                }
+            }
+            
+            if (Math.Abs(dot) < E)
+            {
+                // The dot-product is pretty small or close to zero -> the coordinates are perpendicular
+                // only thing left to figure out if the angle is positive or negative
+                // For this we have the cross-product
+                if (cross > 0)
+                {
+                    return (Math.PI / 2);
+                }
+                else
+                {
+                    return (3 * Math.PI / 2);
+                }
+            }
+
+            // split per quadrant.
+            double angle;
+            if (dot > 0)
+            {
+                // dot > 0
+                if (cross > 0)
+                {
+                    // dot > 0 and cross > 0
+                    // Quadrant 1
+                    angle = System.Math.Asin(cross / (v1size * v2size));
+                    if (angle < System.Math.PI / 4f)
+                    {
+                        // use cosine.
+                        angle = System.Math.Acos(dot / (v1size * v2size));
+                    }
+
+                    // angle is ok here for quadrant 1.
+                }
+                else
+                {
+                    // dot > 0 and cross <= 0
+                    // Quadrant 4
+                    angle = (System.Math.PI * 2.0f) + System.Math.Asin(cross / (v1size * v2size));
+                    if (angle > (System.Math.PI * 2.0f) - System.Math.PI / 4f)
+                    {
+                        // use cosine.
+                        angle = (System.Math.PI * 2.0f) - System.Math.Acos(dot / (v1size * v2size));
+                    }
+
+                    // angle is ok here for quadrant 1.
+                }
+            }
+            else
+            {
+                // dot <= 0
+                if (cross > 0)
+                {
+                    // dot > 0 and cross > 0
+                    // Quadrant 2
+                    angle = System.Math.PI - System.Math.Asin(cross / (v1size * v2size));
+                    if (angle > System.Math.PI / 2f + System.Math.PI / 4f)
+                    {
+                        // use cosine.
+                        angle = System.Math.Acos(dot / (v1size * v2size));
+                    }
+
+                    // angle is ok here for quadrant 2.
+                }
+                else
+                {
+                    // dot > 0 and cross <= 0
+                    // Quadrant 3
+                    angle = -(- System.Math.PI + System.Math.Asin(cross / (v1size * v2size)));
+                    if (angle < System.Math.PI + System.Math.PI / 4f)
+                    {
+                        // use cosine.
+                        angle = (System.Math.PI * 2.0f) - System.Math.Acos(dot / (v1size * v2size));
+                    }
+
+                    // angle is ok here for quadrant 3.
+                }
+            }
+
+            return angle;
+        }
+        
+         /// <summary>
+         /// Returns an estimate of the distance between the two given coordinates.
+         /// </summary>
+         /// <param name="coordinate1">The first coordinate.</param>
+         /// <param name="coordinate2">The second coordinate.</param>
+         /// <remarks>Accuracy decreases with distance.</remarks>
+         public static double DistanceEstimateInMeter(this (double longitude, double latitude) coordinate1, 
+             (double longitude, double latitude) coordinate2)
+         {
+             var lat1Rad = (coordinate1.latitude / 180d) * System.Math.PI;
+             var lon1Rad = (coordinate1.longitude / 180d) * System.Math.PI;
+             var lat2Rad = (coordinate2.latitude / 180d) * System.Math.PI;
+             var lon2Rad = (coordinate2.longitude / 180d) * System.Math.PI;
+
+             var x = (lon2Rad - lon1Rad) * System.Math.Cos((lat1Rad + lat2Rad) / 2.0);
+             var y = lat2Rad - lat1Rad;
+
+             var m = System.Math.Sqrt(x * x + y * y) * RadiusOfEarth;
+
+             return m;
+         }
+
+        /// <summary>
+         /// Returns a coordinate offset with a given distance.
+         /// </summary>
+         /// <param name="coordinate">The coordinate.</param>
+         /// <param name="meter">The distance.</param>
+         /// <returns>An offset coordinate.</returns>
+         public static (double longitude, double latitude) OffsetWithDistanceX(this (double longitude, double latitude) coordinate, double meter)
+         {
+             var offset = 0.001;
+             var offsetLon = (coordinate.longitude + offset, coordinate.latitude);
+             var lonDistance = offsetLon.DistanceEstimateInMeter(coordinate);
+
+             return (coordinate.longitude + (meter / lonDistance) * offset, 
+                 coordinate.latitude);
+         }
+            
 //         
 //         internal static double DistanceEstimateInMeterShape(this (double longitude, double latitude) coordinate1, 
 //             (double longitude, double latitude) coordinate2, IEnumerable<(double longitude, double latitude)>? shape = null)
@@ -76,21 +210,7 @@
 //             return distance;
 //         }
 //         
-//         /// <summary>
-//         /// Returns a coordinate offset with a given distance.
-//         /// </summary>
-//         /// <param name="coordinate">The coordinate.</param>
-//         /// <param name="meter">The distance.</param>
-//         /// <returns>An offset coordinate.</returns>
-//         public static (double longitude, double latitude) OffsetWithDistanceX(this (double longitude, double latitude) coordinate, double meter)
-//         {
-//             var offset = 0.001;
-//             var offsetLon = (coordinate.longitude + offset, coordinate.latitude);
-//             var lonDistance = offsetLon.DistanceEstimateInMeter(coordinate);
-//
-//             return (coordinate.longitude + (meter / lonDistance) * offset, 
-//                 coordinate.latitude);
-//         }
+
 //         
 //         /// <summary>
 //         /// Returns a coordinate offset with a given distance.
@@ -132,7 +252,6 @@
 //             return (longitude, latitude); //, elevation);
 //         }
 //         
-//         const double E = 0.0000000001;
 //         
 //         /// <summary>
 //         /// Projects for coordinate on this line.
@@ -397,5 +516,5 @@
 //            return box.bottomRight.latitude < coordinate.latitude && coordinate.latitude <= box.topLeft.latitude &&
 //                   box.topLeft.longitude < coordinate.longitude && coordinate.longitude <= box.bottomRight.longitude;
 //         }
-//     }
-// }
+    }
+}

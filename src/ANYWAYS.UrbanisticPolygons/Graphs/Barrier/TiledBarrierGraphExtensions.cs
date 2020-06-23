@@ -12,6 +12,21 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
     internal static class TiledBarrierGraphExtensions
     {
         private static readonly RobustLineIntersector Intersector = new RobustLineIntersector();
+
+        internal static bool HasTileFor(this TiledBarrierGraph graph, int vertex)
+        {
+            var l = graph.GetVertex(vertex);
+            var t = TileStatic.WorldTileLocalId(l.longitude, l.latitude, graph.Zoom);
+            return graph.HasTile(t);
+        }
+
+        internal static void MoveNextUntil(this TiledBarrierGraph.BarrierGraphEnumerator enumerator, int edge)
+        {
+            while (enumerator.MoveNext())
+            {
+                if (enumerator.Edge == edge) break;
+            }
+        }
         
         internal static void Flatten(this TiledBarrierGraph graph, IEnumerable<int>? newEdges = null)
         {

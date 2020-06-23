@@ -2,12 +2,14 @@ using System.Collections.Generic;
 
 namespace ANYWAYS.UrbanisticPolygons.Graphs
 {
-    internal class Graph<TVertexData, TEdgeData>
+    internal class Graph<TVertexData, TEdgeData, TFaceData>
     {
         private readonly List<(TVertexData vertex, int pointer)> _vertices = 
             new List<(TVertexData vertex, int pointer)>();
-        private readonly List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2)> _edges = 
-            new List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2)>();
+        private readonly List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2, int faceLeft, int faceRight, int nextLeft1, int nextRight1)> _edges = 
+            new List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2, int faceLeft, int faceRight, int nextLeft1, int nextRight1)>();
+        private readonly List<(TFaceData face, int edge)> _faces =
+            new List<(TFaceData face, int edge)>();
 
         public int AddVertex(TVertexData vertex)
         {
@@ -23,18 +25,44 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
 
         public int VertexCount => _vertices.Count;
 
+        public int FaceCount => _faces.Count;
+
         public int AddEdge(int vertex1, int vertex2, TEdgeData edgeData)
         {
             var vertex1Meta = _vertices[vertex1];
             var vertex2Meta = _vertices[vertex2];
             
             var id = _edges.Count;
-            _edges.Add((edgeData, vertex1, vertex2, vertex1Meta.pointer, vertex2Meta.pointer));
+            _edges.Add((edgeData, vertex1, vertex2, vertex1Meta.pointer, vertex2Meta.pointer, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue));
 
             _vertices[vertex1] = (vertex1Meta.vertex, id);
             _vertices[vertex2] = (vertex2Meta.vertex, id);
             
             return id;
+        }
+
+        public int AddFace(TFaceData face)
+        {
+            var id = _faces.Count;
+            _faces.Add((face, int.MaxValue));
+            return id;
+        }
+
+        public void SetFace(int edge, bool left, int face)
+        {
+            var edgeDetails = _edges[edge];
+            if (left)
+            {
+                _edges[edge] = (edgeDetails.edge, edgeDetails.vertex1, edgeDetails.vertex2, edgeDetails.nextEdge1,
+                    edgeDetails.nextEdge2,
+                    face, edgeDetails.faceRight, int.MaxValue, edgeDetails.nextRight1);
+            }
+            else
+            {
+                _edges[edge] = (edgeDetails.edge, edgeDetails.vertex1, edgeDetails.vertex2, edgeDetails.nextEdge1,
+                    edgeDetails.nextEdge2,
+                    edgeDetails.faceLeft, face, edgeDetails.nextLeft1, int.MaxValue);
+            }
         }
 
         public void DeleteEdge(int edge)
@@ -77,13 +105,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
                     {
                         _edges[previousPointer] = (previousEdgeDetails.edge, previousEdgeDetails.vertex1,
                             previousEdgeDetails.vertex2,
-                            nextPointer, previousEdgeDetails.nextEdge2);
+                            nextPointer, previousEdgeDetails.nextEdge2, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
                     }
                     else
                     {
                         _edges[previousPointer] = (previousEdgeDetails.edge, previousEdgeDetails.vertex1,
                             previousEdgeDetails.vertex2,
-                            previousEdgeDetails.nextEdge1, nextPointer);
+                            previousEdgeDetails.nextEdge1, nextPointer, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
                     }
 
                     return;
@@ -101,9 +129,9 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
 
         public class Enumerator
         {
-            private readonly Graph<TVertexData, TEdgeData> _graph;
+            private readonly Graph<TVertexData, TEdgeData, TFaceData> _graph;
 
-            public Enumerator(Graph<TVertexData, TEdgeData> graph)
+            public Enumerator(Graph<TVertexData, TEdgeData, TFaceData> graph)
             {
                 _graph = graph;
             }
@@ -111,7 +139,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             private int _vertex = int.MaxValue;
             private int _nextEdge = int.MaxValue;
             private bool _forward = false;
-            private (TEdgeData edge, int vertex1, int vertex2) _edge;
+            private (TEdgeData edge, int vertex1, int vertex2, int faceLeft, int faceRight) _edge;
 
             public void Reset()
             {
@@ -140,13 +168,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
                 {
                     _nextEdge = edge.nextEdge1;
                     _forward = true;
-                    _edge = (edge.edge, edge.vertex1, edge.vertex2);
+                    _edge = (edge.edge, edge.vertex1, edge.vertex2, edge.faceLeft, edge.faceRight);
                 }
                 else
                 {
                     _nextEdge = edge.nextEdge2;
                     _forward = false;
-                    _edge = (edge.edge, edge.vertex2, edge.vertex1);
+                    _edge = (edge.edge, edge.vertex2, edge.vertex1, edge.faceLeft, edge.faceRight);
                 }
 
                 return true;
@@ -157,6 +185,10 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             public int Vertex1 => _edge.vertex1;
 
             public int Vertex2 => _edge.vertex2;
+
+            public int FaceLeft => _edge.faceLeft;
+
+            public int FaceRight => _edge.faceRight;
             
             public int Edge { get; private set; }
 
