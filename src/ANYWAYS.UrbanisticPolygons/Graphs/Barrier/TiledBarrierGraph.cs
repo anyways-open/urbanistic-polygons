@@ -96,6 +96,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         {
             return new BarrierGraphEnumerator(this);
         }
+        
+        public BarrierGraphFaceEnumerator GetFaceEnumerator()
+        {
+            return new BarrierGraphFaceEnumerator(this);
+        }
 
         private struct BarrierGraphEdge
         {
@@ -117,7 +122,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             {
                 Graph = graph;
                 
-                _enumerator = graph._graph.GetEnumerator();
+                _enumerator = graph._graph.GetEdgeEnumerator();
             }
 
             public bool MoveTo(int vertex)
@@ -143,6 +148,42 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             public int FaceLeft => _enumerator.FaceLeft;
 
             public int FaceRight => _enumerator.FaceRight;
+
+            public (double longitude, double latitude)[] Shape => _enumerator.Data.Shape;
+
+            public TagsCollectionBase Tags => _enumerator.Data.Tags;
+        }
+        
+        public class BarrierGraphFaceEnumerator
+        {
+            private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face>.FaceEnumerator _enumerator;
+
+            public BarrierGraphFaceEnumerator(TiledBarrierGraph graph)
+            {
+                Graph = graph;
+                
+                _enumerator = graph._graph.GetFaceEnumerator();
+            }
+
+            public bool MoveTo(int face)
+            {
+                return _enumerator.MoveTo(face);
+            }
+
+            public bool MoveNext()
+            {
+                return _enumerator.MoveNext();
+            }
+
+            public TiledBarrierGraph Graph { get; }
+
+            public int Edge => _enumerator.Edge;
+
+            public int Vertex1 => _enumerator.Vertex1;
+
+            public int Vertex2 => _enumerator.Vertex2;
+
+            public bool IsLeft => _enumerator.IsLeft;
 
             public (double longitude, double latitude)[] Shape => _enumerator.Data.Shape;
 

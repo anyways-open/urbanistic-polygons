@@ -9,7 +9,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
     public class TiledBarrierGraphTests
     {
         [Fact]
-        public void TileBarrierGraph_AddVertex_1Vertex_ShouldAddVertex0()
+        public void TiledBarrierGraph_AddVertex_1Vertex_ShouldAddVertex0()
         {
             var graphs = new TiledBarrierGraph();
             var v = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
@@ -22,7 +22,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
         }
         
         [Fact]
-        public void TileBarrierGraph_Enumerator_1Vertex_ShouldEnumerate1Vertex()
+        public void TiledBarrierGraph_Enumerator_1Vertex_ShouldEnumerate1Vertex()
         {
             var graphs = new TiledBarrierGraph();
             var v = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
@@ -33,13 +33,12 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
         }
         
         [Fact]
-        public void TileBarrierGraph_AddEdge_1Edge_ShouldAddEdge0()
+        public void TiledBarrierGraph_AddEdge_1Edge_ShouldAddEdge0()
         {
             var graphs = new TiledBarrierGraph();
             var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
             var v2 = graphs.AddVertex(4.7525310516357420, 50.97851368626033, 564341431);
-            var e = graphs.AddEdge(v1, v2, Enumerable.Empty<(double longitude, double latitude)>(),
-                new TagsCollection());
+            var e = graphs.AddEdge(v1, v2);
             
             Assert.Equal(2, graphs.VertexCount);
             Assert.Equal(0, e);
@@ -57,7 +56,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
         }
         
         [Fact]
-        public void TileBarrierGraph_RemoveEdge_2Edges_RemoveLast_ShouldLeave1()
+        public void TiledBarrierGraph_RemoveEdge_2Edges_RemoveLast_ShouldLeave1()
         {
             var graphs = new TiledBarrierGraph();
             var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
@@ -96,7 +95,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
         }
         
         [Fact]
-        public void TileBarrierGraph_RemoveEdge_2Edges_RemoveFirst_ShouldLeave1()
+        public void TiledBarrierGraph_RemoveEdge_2Edges_RemoveFirst_ShouldLeave1()
         {
             var graphs = new TiledBarrierGraph();
             var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
@@ -129,7 +128,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
         }
         
         [Fact]
-        public void TileBarrierGraph_RemoveEdge_2Edges_Add4_Remove2_ShouldLeave2()
+        public void TiledBarrierGraph_RemoveEdge_2Edges_Add4_Remove2_ShouldLeave2()
         {
             var graphs = new TiledBarrierGraph();
             
@@ -182,6 +181,58 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
             Assert.True(expected.Remove(enumerator.Edge));
             Assert.False(enumerator.MoveNext());
             Assert.Empty(expected);
+        }
+
+        [Fact]
+        public void TiledBarrierGraph_SetFace_Left_1Edge_ShouldSetFaceLeft()
+        {
+            var graphs = new TiledBarrierGraph();
+            var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
+            var v2 = graphs.AddVertex(4.7525310516357420, 50.97851368626033, 564341431);
+            var e = graphs.AddEdge(v1, v2);
+
+            var f = graphs.AddFace();
+            graphs.SetFace(e, true, f);
+
+            var enumerator = graphs.GetEnumerator();
+            enumerator.MoveTo(v1);
+            enumerator.MoveNext();
+            Assert.Equal(f, enumerator.FaceLeft);
+        }
+
+        [Fact]
+        public void TiledBarrierGraph_SetFace_Right_1Edge_ShouldSetFaceRight()
+        {
+            var graphs = new TiledBarrierGraph();
+            var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
+            var v2 = graphs.AddVertex(4.7525310516357420, 50.97851368626033, 564341431);
+            var e = graphs.AddEdge(v1, v2);
+
+            var f = graphs.AddFace();
+            graphs.SetFace(e, false, f);
+
+            var enumerator = graphs.GetEnumerator();
+            enumerator.MoveTo(v1);
+            enumerator.MoveNext();
+            Assert.Equal(f, enumerator.FaceRight);
+        }
+
+        [Fact]
+        public void TiledBarrierGraph_FaceEnumerator_1Edge_Left_ShouldEnumerateEdge()
+        {
+            var graphs = new TiledBarrierGraph();
+            var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
+            var v2 = graphs.AddVertex(4.7525310516357420, 50.97851368626033, 564341431);
+            var e = graphs.AddEdge(v1, v2);
+
+            var f = graphs.AddFace();
+            graphs.SetFace(e, false, f);
+
+            var enumerator = graphs.GetFaceEnumerator();
+            Assert.True(enumerator.MoveTo(f));
+            Assert.True(enumerator.MoveNext());
+            Assert.Equal(e, enumerator.Edge);
+            Assert.False(enumerator.MoveNext());
         }
     }
 }

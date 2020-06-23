@@ -51,18 +51,22 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
         public void SetFace(int edge, bool left, int face)
         {
             var edgeDetails = _edges[edge];
+            var faceDetails = _faces[face];
+            var next = faceDetails.edge;
             if (left)
             {
                 _edges[edge] = (edgeDetails.edge, edgeDetails.vertex1, edgeDetails.vertex2, edgeDetails.nextEdge1,
                     edgeDetails.nextEdge2,
-                    face, edgeDetails.faceRight, int.MaxValue, edgeDetails.nextRight1);
+                    face, edgeDetails.faceRight, next, edgeDetails.nextRight1);
             }
             else
             {
                 _edges[edge] = (edgeDetails.edge, edgeDetails.vertex1, edgeDetails.vertex2, edgeDetails.nextEdge1,
                     edgeDetails.nextEdge2,
-                    edgeDetails.faceLeft, face, edgeDetails.nextLeft1, int.MaxValue);
+                    edgeDetails.faceLeft, face, edgeDetails.nextLeft1, next);
             }
+
+            _faces[face] = (faceDetails.face, edge);
         }
 
         public void DeleteEdge(int edge)
@@ -122,7 +126,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             }
         }
 
-        public Enumerator GetEnumerator()
+        public Enumerator GetEdgeEnumerator()
         {
             return new Enumerator(this);
         }
@@ -140,13 +144,6 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             private int _nextEdge = int.MaxValue;
             private bool _forward = false;
             private (TEdgeData edge, int vertex1, int vertex2, int faceLeft, int faceRight) _edge;
-
-            public void Reset()
-            {
-                _vertex = int.MaxValue;
-                _nextEdge = int.MaxValue;
-                _forward = false;
-            }
             
             public bool MoveTo(int vertex)
             {
@@ -189,6 +186,67 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             public int FaceLeft => _edge.faceLeft;
 
             public int FaceRight => _edge.faceRight;
+            
+            public int Edge { get; private set; }
+
+            public TEdgeData Data => _edge.edge;
+        }
+        
+        public FaceEnumerator GetFaceEnumerator()
+        {
+            return new FaceEnumerator(this);
+        }
+
+        public class FaceEnumerator
+        {
+            private readonly Graph<TVertexData, TEdgeData, TFaceData> _graph;
+
+            public FaceEnumerator(Graph<TVertexData, TEdgeData, TFaceData> graph)
+            {
+                _graph = graph;
+            }
+
+            private int _face = int.MaxValue;
+            private int _nextEdge = int.MaxValue;
+            private bool _isLeft = false;
+            private (TEdgeData edge, int vertex1, int vertex2, int faceLeft, int faceRight) _edge;
+            
+            public bool MoveTo(int face)
+            {
+                if (_graph._faces.Count <= face) return false;
+
+                _face = face;
+                _nextEdge = _graph._faces[_face].edge;
+                return true;
+            }
+
+            public bool MoveNext()
+            {
+                if (_nextEdge == int.MaxValue) return false;
+
+                this.Edge = _nextEdge;
+                var edge = _graph._edges[_nextEdge];
+
+                if (edge.faceLeft == _face)
+                {
+                    _nextEdge = edge.nextLeft1;
+                    _isLeft = true;
+                }
+                else
+                {
+                    _nextEdge = edge.nextRight1;
+                    _isLeft = false;
+                }
+                _edge = (edge.edge, edge.vertex1, edge.vertex2, edge.faceLeft, edge.faceRight);
+
+                return true;
+            }
+
+            public bool IsLeft => _isLeft;
+
+            public int Vertex1 => _edge.vertex1;
+
+            public int Vertex2 => _edge.vertex2;
             
             public int Edge { get; private set; }
 
