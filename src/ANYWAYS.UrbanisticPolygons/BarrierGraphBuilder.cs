@@ -6,6 +6,7 @@ using OsmSharp;
 using OsmSharp.Tags;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Tiles;
+using OsmSharp.Logging;
 
 [assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests.Functional")]
 namespace ANYWAYS.UrbanisticPolygons
@@ -84,7 +85,7 @@ namespace ANYWAYS.UrbanisticPolygons
             Func<TagsCollectionBase, bool> isBarrier)
         {
             // collect all nodes with more than one barrier way.
-            var nodes = new Dictionary<long, (double longitude, double latitude)>();
+            var nodes = new Dictionary<long, (double longitude, double latitude)?>();
             var vertexNodes = new Dictionary<long, int>();
             foreach (var osmGeo in osmGeos)
             {
@@ -112,7 +113,7 @@ namespace ANYWAYS.UrbanisticPolygons
                         }
                     }
 
-                    nodes[nodeId] = (double.MaxValue, double.MaxValue);
+                    nodes[nodeId] = null;
                 }
             }
             
@@ -135,7 +136,8 @@ namespace ANYWAYS.UrbanisticPolygons
                     graph.HasTile(TileStatic.WorldTileLocalId(node.Longitude.Value, node.Latitude.Value, graph.Zoom)))
                     continue; // node is not a vertex and inside a loaded tile.
 
-                vertexNodes[node.Id.Value] = graph.AddVertex(node.Longitude.Value, node.Latitude.Value, node.Id.Value);
+                var vertex = graph.AddVertex(node.Longitude.Value, node.Latitude.Value, node.Id.Value);
+                vertexNodes[node.Id.Value] = vertex;
             }
             
             // add all edges.
@@ -171,7 +173,15 @@ namespace ANYWAYS.UrbanisticPolygons
                     {
                         if (!nodes.TryGetValue(node, out var nodeLocation)) throw new InvalidDataException(
                             $"Node {node} in way {way.Id} not found!");
-                        shape.Add(nodeLocation);
+                        if (nodeLocation == null) 
+                        {
+                            OsmSharp.Logging.Logger.Log(nameof(BarrierGraphBuilder), TraceEventType.Warning,
+                            $"Node location for node {node} in way {way.Id} not found!");
+                        }
+                        else
+                        {
+                            shape.Add(nodeLocation.Value);
+                        }
                         continue;
                     }
 

@@ -134,14 +134,14 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                     coordinates.Add(new Coordinate(v1Location.longitude, v1Location.latitude));
                 }
 
-                // for (var s = 0; s < edge.shape.Length; s++)
-                // {
-                //     var i = s;
-                //     if (!edge.forward) i = edge.shape.Length - i - 1;
-                //     var sp = edge.shape[i];
-                //     
-                //     coordinates.Add(new Coordinate(sp.longitude, sp.latitude));
-                // }
+                for (var s = 0; s < edge.shape.Length; s++)
+                {
+                    var i = s;
+                    if (!edge.forward) i = edge.shape.Length - i - 1;
+                    var sp = edge.shape[i];
+                    
+                    coordinates.Add(new Coordinate(sp.longitude, sp.latitude));
+                }
                 
                 var v2Location = graph.GetVertex(edge.vertex2);
                 coordinates.Add(new Coordinate(v2Location.longitude, v2Location.latitude));

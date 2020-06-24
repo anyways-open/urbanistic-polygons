@@ -294,13 +294,6 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             }
         }
 
-        internal static FeatureCollection ToFeatureCollection(this TiledBarrierGraph graph)
-        {
-            var features = new FeatureCollection();
-            features.AddRange(graph.ToFeatures());
-            return features;
-        }
-
         internal static IEnumerable<Feature> ToFeatures(this TiledBarrierGraph graph)
         {
             var enumerator = graph.GetEnumerator();

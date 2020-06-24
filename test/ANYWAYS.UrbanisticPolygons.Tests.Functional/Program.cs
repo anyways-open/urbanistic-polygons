@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
+using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Tests.Functional.Download;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
@@ -50,7 +51,6 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             
             // run face assignment for the tile.
             var result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
-            File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
             while (!result.success)
             {
                 // extra tiles need loading.
@@ -58,8 +58,8 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
                 
                 // try again.
                 result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
-                File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
             }
+            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
         }
     }
 }
