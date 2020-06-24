@@ -27,7 +27,8 @@ namespace ANYWAYS.UrbanisticPolygons
             ("highway", "trunk", 30),
             ("highway", "trunk_link", 30),
             ("railway", "*", 30),
-            ("natural", "water", 10)
+            ("natural", "water", 10),
+            ("waterway", "stream", 5)
         );
 
         public static WayWeight<string> BarrierClassification = new WayWeight<string>(

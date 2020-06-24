@@ -62,7 +62,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
             while (first != null)
             {
                 // check for a u-turn.
-                if (first.Vertex2 == path[^1].v1) break;
+                if (first.Edge == path[^1].e) break;
 
                 if (!enumerator.Graph.HasTileFor(first.Vertex2))
                 {

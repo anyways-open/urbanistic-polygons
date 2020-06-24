@@ -35,8 +35,10 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
                 }
             }
 
-            var tile = TileStatic.ToLocalId(
-                TileStatic.WorldToTile(4.801913201808929, 51.26797859372288, 14), 14);
+            var wechelderzande = (4.801913201808929, 51.26797859372288);
+            var staden = (3.0198, 50.9743);
+            var leyton = (-0.00303, 51.56436);
+            var tile = TileStatic.WorldTileLocalId(staden, 14);
 
             bool IsBarrier(TagsCollectionBase? tags)
             {
