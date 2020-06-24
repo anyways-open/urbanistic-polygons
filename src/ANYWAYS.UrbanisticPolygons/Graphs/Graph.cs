@@ -7,10 +7,10 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
     {
         private readonly List<(TVertexData vertex, int pointer)> _vertices = 
             new List<(TVertexData vertex, int pointer)>();
-        private readonly List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2, int faceLeft, int faceRight, int nextLeft1, int nextRight1)> _edges = 
-            new List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2, int faceLeft, int faceRight, int nextLeft1, int nextRight1)>();
-        private readonly List<(TFaceData face, int edge)> _faces =
-            new List<(TFaceData face, int edge)>();
+        private readonly List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2, int left, int right, int nextLeft, int nextRight, bool nextLeftLeft, bool nextRightLeft)> _edges = 
+            new List<(TEdgeData edge, int vertex1, int vertex2, int nextEdge1, int nextEdge2, int left, int right, int nextLeft, int nextRight, bool nextLeftLeft, bool nextRightLeft)>();
+        private readonly List<(TFaceData face, int edge, bool left)> _faces =
+            new List<(TFaceData face, int edge, bool left)>();
 
         public int AddVertex(TVertexData vertex)
         {
@@ -34,7 +34,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             var vertex2Meta = _vertices[vertex2];
             
             var id = _edges.Count;
-            _edges.Add((edgeData, vertex1, vertex2, vertex1Meta.pointer, vertex2Meta.pointer, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue));
+            _edges.Add((edgeData, vertex1, vertex2, vertex1Meta.pointer, vertex2Meta.pointer, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue, false, false));
 
             _vertices[vertex1] = (vertex1Meta.vertex, id);
             _vertices[vertex2] = (vertex2Meta.vertex, id);
@@ -48,16 +48,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
 
             for (var e = 0; e < _edges.Count; e++)
             {
-                var (edge, vertex1, vertex2, nextEdge1, nextEdge2, _, _, _, _) = _edges[e];
+                var (edge, vertex1, vertex2, nextEdge1, nextEdge2, _, _, _, _, _, _) = _edges[e];
                 _edges[e] = (edge, vertex1, vertex2, nextEdge1,
-                    nextEdge2, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
+                    nextEdge2, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue, false, false);
             }
         }
 
         public int AddFace(TFaceData face)
         {
             var id = _faces.Count;
-            _faces.Add((face, int.MaxValue));
+            _faces.Add((face, int.MaxValue, false));
             return id;
         }
 
@@ -65,21 +65,20 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
         {
             var edgeDetails = _edges[edge];
             var faceDetails = _faces[face];
-            var next = faceDetails.edge;
             if (left)
             {
                 _edges[edge] = (edgeDetails.edge, edgeDetails.vertex1, edgeDetails.vertex2, edgeDetails.nextEdge1,
                     edgeDetails.nextEdge2,
-                    face, edgeDetails.faceRight, next, edgeDetails.nextRight1);
+                    face, edgeDetails.right, faceDetails.edge, edgeDetails.nextRight, faceDetails.left, edgeDetails.nextRightLeft);
             }
             else
             {
                 _edges[edge] = (edgeDetails.edge, edgeDetails.vertex1, edgeDetails.vertex2, edgeDetails.nextEdge1,
                     edgeDetails.nextEdge2,
-                    edgeDetails.faceLeft, face, edgeDetails.nextLeft1, next);
+                    edgeDetails.left, face, edgeDetails.nextLeft, faceDetails.edge, edgeDetails.nextLeftLeft, faceDetails.left);
             }
 
-            _faces[face] = (faceDetails.face, edge);
+            _faces[face] = (faceDetails.face, edge, left);
         }
 
         public void DeleteEdge(int edge)
@@ -122,13 +121,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
                     {
                         _edges[previousPointer] = (previousEdgeDetails.edge, previousEdgeDetails.vertex1,
                             previousEdgeDetails.vertex2,
-                            nextPointer, previousEdgeDetails.nextEdge2, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
+                            nextPointer, previousEdgeDetails.nextEdge2, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue, false, false);
                     }
                     else
                     {
                         _edges[previousPointer] = (previousEdgeDetails.edge, previousEdgeDetails.vertex1,
                             previousEdgeDetails.vertex2,
-                            previousEdgeDetails.nextEdge1, nextPointer, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
+                            previousEdgeDetails.nextEdge1, nextPointer, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue, false, false);
                     }
 
                     return;
@@ -156,7 +155,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             private int _vertex = int.MaxValue;
             private int _nextEdge = int.MaxValue;
             private bool _forward = false;
-            private (TEdgeData edge, int vertex1, int vertex2, int faceLeft, int faceRight) _edge;
+            private (TEdgeData edge, int vertex1, int vertex2, int left, int right) _edge;
             
             public bool MoveTo(int vertex)
             {
@@ -178,13 +177,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
                 {
                     _nextEdge = edge.nextEdge1;
                     _forward = true;
-                    _edge = (edge.edge, edge.vertex1, edge.vertex2, edge.faceLeft, edge.faceRight);
+                    _edge = (edge.edge, edge.vertex1, edge.vertex2, edge.left, edge.right);
                 }
                 else
                 {
                     _nextEdge = edge.nextEdge2;
                     _forward = false;
-                    _edge = (edge.edge, edge.vertex2, edge.vertex1, edge.faceLeft, edge.faceRight);
+                    _edge = (edge.edge, edge.vertex2, edge.vertex1, edge.left, edge.right);
                 }
 
                 return true;
@@ -196,9 +195,9 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
 
             public int Vertex2 => _edge.vertex2;
 
-            public int FaceLeft => _edge.faceLeft;
+            public int FaceLeft => _edge.left;
 
-            public int FaceRight => _edge.faceRight;
+            public int FaceRight => _edge.right;
             
             public int Edge { get; private set; }
 
@@ -220,53 +219,42 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             }
 
             private int _face = int.MaxValue;
-            private int _nextEdge = int.MaxValue;
-            private bool _isLeft = false;
-            private (TEdgeData edge, int vertex1, int vertex2, int faceLeft, int faceRight) _edge;
+            private (int next, bool left) _nextEdge = (int.MaxValue, false);
+            private (TEdgeData edge, int vertex1, int vertex2) _edge;
             
             public bool MoveTo(int face)
             {
                 if (_graph._faces.Count <= face) return false;
 
                 _face = face;
-                _nextEdge = _graph._faces[_face].edge;
+                var (_, edge, left) = _graph._faces[_face];
+                _nextEdge = (edge, left);
                 return true;
             }
 
             public bool MoveNext()
             {
-                if (_nextEdge == int.MaxValue) return false;
+                if (_nextEdge.next == int.MaxValue) return false;
 
-                this.Edge = _nextEdge;
-                var edge = _graph._edges[_nextEdge];
+                this.Edge = _nextEdge.next;
+                var edge = _graph._edges[this.Edge];
 
-                if (edge.faceLeft == edge.faceRight)
+                this.IsLeft = _nextEdge.left;
+                if (_nextEdge.left)
                 {
-                    return false;
-                    //throw new Exception("Cannot handle edge with the same face lef and right.");
-                }
-
-                if (edge.faceLeft == _face)
-                {
-                    _nextEdge = edge.nextLeft1;
-                    _isLeft = true;
-                }
-                else if (edge.faceRight == _face)
-                {
-                    _nextEdge = edge.nextRight1;
-                    _isLeft = false;
+                    _nextEdge = (edge.nextLeft, edge.nextLeftLeft);
                 }
                 else
                 {
-                    return false;
-                    //throw new Exception("Face points to edge but edge doesn't have the given face.");
+                    _nextEdge = (edge.nextRight, edge.nextRightLeft);
                 }
-                _edge = (edge.edge, edge.vertex1, edge.vertex2, edge.faceLeft, edge.faceRight);
+                
+                _edge = (edge.edge, edge.vertex1, edge.vertex2);
 
                 return true;
             }
 
-            public bool IsLeft => _isLeft;
+            public bool IsLeft { get; private set; }
 
             public int Vertex1 => _edge.vertex1;
 

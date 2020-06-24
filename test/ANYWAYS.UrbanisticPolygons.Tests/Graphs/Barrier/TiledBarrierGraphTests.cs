@@ -198,6 +198,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
             enumerator.MoveTo(v1);
             enumerator.MoveNext();
             Assert.Equal(f, enumerator.FaceLeft);
+            Assert.Equal(int.MaxValue, enumerator.FaceRight);
         }
 
         [Fact]
@@ -214,11 +215,12 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
             var enumerator = graphs.GetEnumerator();
             enumerator.MoveTo(v1);
             enumerator.MoveNext();
+            Assert.Equal(int.MaxValue, enumerator.FaceLeft);
             Assert.Equal(f, enumerator.FaceRight);
         }
 
         [Fact]
-        public void TiledBarrierGraph_FaceEnumerator_1Edge_Left_ShouldEnumerateEdge()
+        public void TiledBarrierGraph_FaceEnumerator_1Edge_Right_ShouldEnumerateEdge()
         {
             var graphs = new TiledBarrierGraph();
             var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
@@ -232,6 +234,49 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier
             Assert.True(enumerator.MoveTo(f));
             Assert.True(enumerator.MoveNext());
             Assert.Equal(e, enumerator.Edge);
+            Assert.False(enumerator.IsLeft);
+            Assert.False(enumerator.MoveNext());
+        }
+
+        [Fact]
+        public void TiledBarrierGraph_FaceEnumerator_1Edge_Left_ShouldEnumerateEdge()
+        {
+            var graphs = new TiledBarrierGraph();
+            var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
+            var v2 = graphs.AddVertex(4.7525310516357420, 50.97851368626033, 564341431);
+            var e = graphs.AddEdge(v1, v2);
+
+            var f = graphs.AddFace();
+            graphs.SetFace(e, true, f);
+
+            var enumerator = graphs.GetFaceEnumerator();
+            Assert.True(enumerator.MoveTo(f));
+            Assert.True(enumerator.MoveNext());
+            Assert.Equal(e, enumerator.Edge);
+            Assert.True(enumerator.IsLeft);
+            Assert.False(enumerator.MoveNext());
+        }
+
+        [Fact]
+        public void TiledBarrierGraph_FaceEnumerator_1Edge_LeftThenRight_ShouldEnumerateEdge()
+        {
+            var graphs = new TiledBarrierGraph();
+            var v1 = graphs.AddVertex(4.7522735595703125, 50.97918242660188, 564341430);
+            var v2 = graphs.AddVertex(4.7525310516357420, 50.97851368626033, 564341431);
+            var e = graphs.AddEdge(v1, v2);
+
+            var f = graphs.AddFace();
+            graphs.SetFace(e, true, f);
+            graphs.SetFace(e, false, f);
+
+            var enumerator = graphs.GetFaceEnumerator();
+            Assert.True(enumerator.MoveTo(f));
+            Assert.True(enumerator.MoveNext());
+            Assert.Equal(e, enumerator.Edge);
+            Assert.False(enumerator.IsLeft);
+            Assert.True(enumerator.MoveNext());
+            Assert.Equal(e, enumerator.Edge);
+            Assert.True(enumerator.IsLeft);
             Assert.False(enumerator.MoveNext());
         }
     }

@@ -148,11 +148,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
             public int Vertex2 => _enumerator.Vertex2;
 
-            public bool Forward => _enumerator.Forward;
-
             public int FaceLeft => _enumerator.FaceLeft;
 
             public int FaceRight => _enumerator.FaceRight;
+
+            public bool Forward => _enumerator.Forward;
 
             public (double longitude, double latitude)[] Shape => _enumerator.Data.Shape;
 

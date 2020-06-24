@@ -385,10 +385,6 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         internal static AttributesTable ToAttributeTable(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
         {
             var attributes = enumerator.Tags.ToAttributeTable();
-
-            attributes.Add("face_left", enumerator.FaceLeft);
-            attributes.Add("face_right", enumerator.FaceRight);
-
             return attributes;
         }
     }

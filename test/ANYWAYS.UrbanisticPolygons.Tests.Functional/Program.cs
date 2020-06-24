@@ -47,15 +47,14 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             // load data for tile.
             var graph = new TiledBarrierGraph();
             graph.LoadForTile(tile, GetTile, IsBarrier);
-            File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
             
             // run face assignment for the tile.
             var result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
+            File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
             while (!result.success)
             {
                 // extra tiles need loading.
                 graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
-                File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
                 
                 // try again.
                 result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
