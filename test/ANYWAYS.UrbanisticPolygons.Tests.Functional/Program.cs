@@ -43,15 +43,24 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
 
                 return DefaultMergeFactorCalculator.Barriers.TryCalculateValue(tags, out _);
             }
-            
-            var barriers = new TiledBarrierGraph();
 
-            Graphs.Barrier.Faces.Faces.AssignFaces(barriers, tile, GetTile, IsBarrier);
+            // load data for tile.
+            var graph = new TiledBarrierGraph();
+            graph.LoadForTile(tile, GetTile, IsBarrier);
+            File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
             
-            var features = new FeatureCollection();
-            features.AddRange(barriers.ToFeatures());
-
-            File.WriteAllText("barriers.geojson", features.ToGeoJson());
+            // run face assignment for the tile.
+            var result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
+            while (!result.success)
+            {
+                // extra tiles need loading.
+                graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
+                File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
+                
+                // try again.
+                result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
+                File.WriteAllText("barriers.geojson", graph.ToFeatureCollection().ToGeoJson());
+            }
         }
     }
 }

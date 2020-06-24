@@ -15,9 +15,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
         internal static bool HasTileFor(this TiledBarrierGraph graph, int vertex)
         {
+            return graph.HasTile(graph.TileFor(vertex));
+        }
+
+        internal static uint TileFor(this TiledBarrierGraph graph, int vertex)
+        {
             var l = graph.GetVertex(vertex);
-            var t = TileStatic.WorldTileLocalId(l.longitude, l.latitude, graph.Zoom);
-            return graph.HasTile(t);
+            return TileStatic.WorldTileLocalId(l.longitude, l.latitude, graph.Zoom);
         }
 
         internal static void MoveNextUntil(this TiledBarrierGraph.BarrierGraphEnumerator enumerator, int edge)
@@ -290,13 +294,15 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             }
         }
 
+        internal static FeatureCollection ToFeatureCollection(this TiledBarrierGraph graph)
+        {
+            var features = new FeatureCollection();
+            features.AddRange(graph.ToFeatures());
+            return features;
+        }
+
         internal static IEnumerable<Feature> ToFeatures(this TiledBarrierGraph graph)
         {
-            foreach (var tileFeature in graph.ToTileFeatures())
-            {
-                yield return tileFeature;
-            }
-            
             var enumerator = graph.GetEnumerator();
             for (var v = 0; v < graph.VertexCount; v++)
             {
@@ -314,6 +320,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                     yield return new Feature(lineString, attributes);
                 }
                 if (hasEdge) yield return new Feature(graph.ToPoint(v), new AttributesTable {{"vertex", v}});
+            }
+
+            foreach (var polygon in graph.GetAllPolygons())
+            {
+                yield return polygon;
+            }
+            
+            foreach (var tileFeature in graph.ToTileFeatures())
+            {
+                yield return tileFeature;
             }
         }
 

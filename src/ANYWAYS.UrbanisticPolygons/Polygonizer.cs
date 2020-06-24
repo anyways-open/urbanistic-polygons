@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
+using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Graphs.Polygon;
+using NetTopologySuite.Features;
 using OsmSharp;
 using OsmSharp.Tags;
 
@@ -10,30 +12,45 @@ namespace ANYWAYS.UrbanisticPolygons
 {
     internal static class Polygonizer
     {
-        public static IEnumerable<object> GetPolygons(uint tile, Func<uint, IEnumerable<OsmGeo>> getTile,
+        public static IEnumerable<Feature> GetPolygons(uint tile, Func<uint, IEnumerable<OsmGeo>> getTile,
             Func<TagsCollectionBase, bool> isBarrier)
         {
-            // load the tile in the barrier graph and the neighbours where needed.
-            var barrierGraph = new TiledBarrierGraph(14);
-            barrierGraph.LoadForTile(tile, getTile, isBarrier);
+            // load data for tile.
+            var graph = new TiledBarrierGraph();
+            graph.LoadForTile(tile, getTile, isBarrier);
             
-            // try to determine all the faces for all edges that have at least one vertex in the requested tile.
-            // queue all undetermined edges because they are not fully loaded, and repeat until done.
-            var incompleteEdges = new HashSet<uint>();
-            while (true)
+            // run face assignment for the tile.
+            var result = graph.AssignFaces(tile);
+            while (!result.success)
             {
-                break;
+                // extra tiles need loading.
+                graph.AddTiles(result.missingTiles, getTile, isBarrier);
+                
+                // try again.
+                result = graph.AssignFaces(tile);
             }
             
-            // for each vertex in the graph:
-            // - when the vertex is not in a loaded tile:
-            //   - mark both edge faces as unknown.
-            
-            // for each vertex in the given tile:
-            // - determine the faces for each edge starting at the vertex.
-            // - 
-            
-            return Enumerable.Empty<object>();
+            // for every face, determine polygon.
+            // TODO: filter for tile.
+            for (var f = 0; f < graph.FaceCount; f++)
+            {
+                var polygon = graph.ToPolygon(f);
+                if (polygon == null) continue;
+                
+                yield return polygon;
+            }
+        }
+        
+        internal static IEnumerable<Feature> GetAllPolygons(this TiledBarrierGraph graph)
+        {
+            // for every face, determine polygon.
+            for (var f = 0; f < graph.FaceCount; f++)
+            {
+                var polygon = graph.ToPolygon(f);
+                if (polygon == null) continue;
+                
+                yield return polygon;
+            }
         }
     }
 }

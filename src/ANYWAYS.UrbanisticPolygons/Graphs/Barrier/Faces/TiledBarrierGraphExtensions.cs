@@ -12,15 +12,15 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
             var graph = enumerator.Graph;
 
             // get a sorted list by angle clockwise relative to the selected edge.
-            var v1Location = graph.GetVertex(enumerator.Vertex1);
+            var v2NonLocation = enumerator.FirstNonVertex2();
             var v2Location = graph.GetVertex(enumerator.Vertex2);
             var sortedByAngle = new SortedDictionary<double, int>();
             while (nextEnumerator.MoveNext())
             {
                 if (nextEnumerator.Edge == enumerator.Edge) continue;
 
-                var vLocation = graph.GetVertex(nextEnumerator.Vertex2);
-                var angle = GeoExtensions.Angle(vLocation, v2Location, v1Location);
+                var nextNonLocation = nextEnumerator.FirstNonVertex1();
+                var angle = GeoExtensions.Angle(v2NonLocation, v2Location, nextNonLocation);
                 sortedByAngle[angle] = nextEnumerator.Vertex2;
             }
             
@@ -35,6 +35,40 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 }
 
                 yield return nextEnumerator;
+            }
+        }
+
+        internal static (double longitude, double latitude) FirstNonVertex2(
+            this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
+        {
+            if (enumerator.Shape.Length == 0)
+            {
+                return enumerator.Graph.GetVertex(enumerator.Vertex1);
+            }
+            if (enumerator.Forward)
+            {
+                return enumerator.Shape[^1];
+            }
+            else
+            {
+                return enumerator.Shape[0];
+            }
+        }
+        
+        internal static (double longitude, double latitude) FirstNonVertex1(
+            this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
+        {
+            if (enumerator.Shape.Length == 0)
+            {
+                return enumerator.Graph.GetVertex(enumerator.Vertex2);
+            }
+            if (enumerator.Forward)
+            {
+                return enumerator.Shape[0];
+            }
+            else
+            {
+                return enumerator.Shape[^1];
             }
         }
 

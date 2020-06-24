@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace ANYWAYS.UrbanisticPolygons.Graphs
@@ -39,6 +40,18 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             _vertices[vertex2] = (vertex2Meta.vertex, id);
             
             return id;
+        }
+
+        public void ResetFaces()
+        {
+            _faces.Clear();
+
+            for (var e = 0; e < _edges.Count; e++)
+            {
+                var (edge, vertex1, vertex2, nextEdge1, nextEdge2, _, _, _, _) = _edges[e];
+                _edges[e] = (edge, vertex1, vertex2, nextEdge1,
+                    nextEdge2, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
+            }
         }
 
         public int AddFace(TFaceData face)
@@ -227,15 +240,26 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
                 this.Edge = _nextEdge;
                 var edge = _graph._edges[_nextEdge];
 
+                if (edge.faceLeft == edge.faceRight)
+                {
+                    return false;
+                    //throw new Exception("Cannot handle edge with the same face lef and right.");
+                }
+
                 if (edge.faceLeft == _face)
                 {
                     _nextEdge = edge.nextLeft1;
                     _isLeft = true;
                 }
-                else
+                else if (edge.faceRight == _face)
                 {
                     _nextEdge = edge.nextRight1;
                     _isLeft = false;
+                }
+                else
+                {
+                    return false;
+                    //throw new Exception("Face points to edge but edge doesn't have the given face.");
                 }
                 _edge = (edge.edge, edge.vertex1, edge.vertex2, edge.faceLeft, edge.faceRight);
 

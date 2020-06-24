@@ -82,6 +82,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             _graph.DeleteEdge(edge);
         }
 
+        public void ResetFaces()
+        {
+            _graph.ResetFaces();
+        }
+        
         public int AddFace()
         {
             return _graph.AddFace(default);
