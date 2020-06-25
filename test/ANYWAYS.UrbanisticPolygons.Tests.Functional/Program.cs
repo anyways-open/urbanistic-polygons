@@ -38,7 +38,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             var wechelderzande = (4.801913201808929, 51.26797859372288);
             var staden = (3.0198, 50.9743);
             var leyton = (-0.00303, 51.56436);
-            var tile = TileStatic.WorldTileLocalId(staden, 14);
+            var tile = TileStatic.WorldTileLocalId(leyton, 14);
 
             bool IsBarrier(TagsCollectionBase? tags)
             {
@@ -52,14 +52,14 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             graph.LoadForTile(tile, GetTile, IsBarrier);
             
             // run face assignment for the tile.
-            var result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
+            var result =  graph.AssignFaces(tile);
             while (!result.success)
             {
                 // extra tiles need loading.
                 graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
                 
                 // try again.
-                result =  Graphs.Barrier.Faces.Faces.AssignFaces(graph, tile);
+                result =  graph.AssignFaces(tile);
             }
             File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
         }

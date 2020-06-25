@@ -10,42 +10,46 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
 {
     internal static class Faces
     {
-        public static (bool success, IEnumerable<uint> missingTiles) AssignFaces(this TiledBarrierGraph graph, uint tile)
+        public static (bool success, IEnumerable<uint> missingTiles) AssignFaces(this TiledBarrierGraph graph,
+            uint tile)
         {
             if (!graph.HasTile(tile)) return (false, new[] {tile});
 
-            var facesUnassigned = true;
-            while (facesUnassigned)
+            var tilesMissing = new HashSet<uint>();
+            graph.ResetFaces();
+
+            // the default face for the case where a loop cannot be found.
+            var unAssignableFace = graph.AddFace();
+            
+            // check each edges for faces and if missing assign them.
+            var enumerator = graph.GetEnumerator();
+            for (var v = 0; v < graph.VertexCount; v++)
             {
-                facesUnassigned = false;
-                graph.ResetFaces();
+                if (!enumerator.MoveTo(v)) continue;
+                if (!enumerator.MoveNext()) continue;
 
-                // the default face for the case where a loop cannot be found.
-                var unAssignableFace = graph.AddFace();
-                
-                var enumerator = graph.GetEnumerator();
-                for (var v = 0; v < graph.VertexCount; v++)
+                var vLocation = graph.GetVertex(v);
+                var vTile = TileStatic.WorldTileLocalId(vLocation.longitude, vLocation.latitude, graph.Zoom);
+                if (vTile != tile) continue;
+
+                enumerator.MoveTo(v);
+                while (enumerator.MoveNext())
                 {
-                    if (facesUnassigned) break;
-                    
-                    if (!enumerator.MoveTo(v)) continue;
-                    if (!enumerator.MoveNext()) continue;
+                    if (enumerator.Forward && enumerator.FaceRight != int.MaxValue) continue;
+                    if (!enumerator.Forward && enumerator.FaceLeft != int.MaxValue) continue;
 
-                    var vLocation = graph.GetVertex(v);
-                    var vTile = TileStatic.WorldTileLocalId(vLocation.longitude, vLocation.latitude, graph.Zoom);
-                    if (vTile != tile) continue;
-
-                    enumerator.MoveTo(v);
-                    while (enumerator.MoveNext())
+                    // ok this edge has an undetermined face.
+                    var result = enumerator.AssignFace(unAssignableFace);
+                    if (!result.success)
                     {
-                        if (enumerator.Forward && enumerator.FaceRight != int.MaxValue) continue;
-                        if (!enumerator.Forward && enumerator.FaceLeft != int.MaxValue) continue;
-
-                        // ok this edge has an undetermined face.
-                        var result = enumerator.AssignFace(unAssignableFace);
-                        if (!result.success) return result;
+                        tilesMissing.UnionWith(result.missingTiles);
                     }
                 }
+            }
+
+            if (tilesMissing.Count > 0)
+            {
+                return (false, tilesMissing);
             }
 
             return (true, Enumerable.Empty<uint>());

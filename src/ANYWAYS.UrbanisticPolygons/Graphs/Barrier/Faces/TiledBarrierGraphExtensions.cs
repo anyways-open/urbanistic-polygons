@@ -21,19 +21,14 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
 
                 var nextNonLocation = nextEnumerator.FirstNonVertex1();
                 var angle = GeoExtensions.Angle(v2NonLocation, v2Location, nextNonLocation);
-                sortedByAngle[angle] = nextEnumerator.Vertex2;
+                sortedByAngle[angle] = nextEnumerator.Edge;
             }
             
             // enumerate edges by the order determined above.
             foreach (var p in sortedByAngle)
             {
                 nextEnumerator.MoveTo(enumerator.Vertex2);
-
-                while (nextEnumerator.MoveNext())
-                {
-                    if (nextEnumerator.Vertex2 == p.Value) break;
-                }
-
+                nextEnumerator.MoveNextUntil(p.Value);
                 yield return nextEnumerator;
             }
         }
