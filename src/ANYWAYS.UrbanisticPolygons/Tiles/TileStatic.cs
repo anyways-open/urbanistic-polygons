@@ -36,7 +36,23 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
 
             return (left, top, right, bottom);
         }
-        
+
+        public static (int x, int y, uint tileId) ToLocalTileCoordinates(int zoom, (double longitude, double latitude) location,
+            int resolution)
+        {
+            var tileId = TileStatic.WorldTileLocalId(location, zoom);
+            
+            var tileLocation = ToLocalTileCoordinates(zoom, tileId, location.longitude, location.latitude, resolution);
+
+            return (tileLocation.x, tileLocation.y, tileId);
+        }
+
+        public static (int x, int y) ToLocalTileCoordinates(int zoom, uint tileId, (double longitude, double latitude) location,
+            int resolution)
+        {
+            return ToLocalTileCoordinates(zoom, tileId, location.longitude, location.latitude, resolution);
+        }
+
         public static (int x, int y) ToLocalTileCoordinates(int zoom, uint tileId, double longitude, double latitude, int resolution)
         {
             var tile = ToTile(zoom, tileId);
@@ -53,6 +69,14 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
             var lonStep = (right - left) / resolution;
             
             return ((int) ((longitude - left) / lonStep), (int) ((top - latitude) / latStep));
+        }
+
+        public static (double longitude, double latitude) FromLocalTileCoordinates(this (int x, int y, uint tileId) location, int zoom,
+            int resolution)
+        {
+            FromLocalTileCoordinates(zoom, location.tileId, location.x, location.y, resolution, out var lon,
+                out var lat);
+            return (lon, lat);
         }
 
         public static void FromLocalTileCoordinates(int zoom, uint tileId, int x, int y, int resolution, out double longitude, out double latitude)

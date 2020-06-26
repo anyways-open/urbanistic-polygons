@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
@@ -58,6 +60,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
         internal static (IReadOnlyList<(int vertex1, int edge, bool forward, int vertex2)>? loop, IEnumerable<uint> missingTiles) RightTurnLoop(
             this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
         {            
+            var edges = new HashSet<(int e, bool dir)>();
+            edges.Add((enumerator.Edge, enumerator.Forward));
             var path = new List<(int v1, int e, bool f, int v2)>
                 {(enumerator.Vertex1, enumerator.Edge, enumerator.Forward, enumerator.Vertex2)};
 
@@ -74,6 +78,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 }
 
                 path.Add((first.Vertex1, first.Edge, first.Forward, first.Vertex2));
+                if (edges.Contains((first.Edge, first.Forward))) throw new Exception("Edge visited twice in same direction!"); 
+                edges.Add((first.Edge, first.Forward));
 
                 if (first.Vertex2 == path[0].v1) break;
 
@@ -106,12 +112,15 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
             return (true, Enumerable.Empty<uint>());
         }
 
-        public static Feature? ToPolygon(this TiledBarrierGraph graph, int face)
+        public static
+            IEnumerable<(int vertex1, int edge, bool forward, int vertex2, (double longitude, double latitude)[] shape)>
+            EnumerateFaceClockwise(
+                this TiledBarrierGraph graph, int face)
         {
             var enumerator = graph.GetFaceEnumerator();
-            if (!enumerator.MoveTo(face)) return null;
-            if (face == 0) return null;
-
+            if (!enumerator.MoveTo(face)) yield break;
+            if (face == 0) yield break;
+            
             var edges = new List<(int vertex1, int edge, bool forward, int vertex2, (double longitude, double latitude)[] shape)>();
             while (enumerator.MoveNext())
             {
@@ -125,17 +134,28 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 }
             }
 
-            if (edges.Count <= 1) return null;
+            if (edges.Count <= 1) yield break;
             if (edges[0].vertex1 == edges[1].vertex2) edges.Reverse();
-            if (edges[0].vertex1 != edges[^1].vertex2) return null;
-            
-            var coordinates = new List<Coordinate>();
+            if (edges[0].vertex1 != edges[^1].vertex2) yield break;
+
             foreach (var edge in edges)
             {
-                if (coordinates.Count == 0)
+                yield return edge;
+            }
+        }
+
+        public static IEnumerable<(double longitude, double latitude)> FaceToClockwiseCoordinates(
+            this TiledBarrierGraph graph, int face)
+        {
+            var edges = graph.EnumerateFaceClockwise(face);
+
+            var firstReturned = false;
+            foreach (var edge in edges)
+            {
+                if (!firstReturned)
                 {
-                    var v1Location = graph.GetVertex(edge.vertex1);
-                    coordinates.Add(new Coordinate(v1Location.longitude, v1Location.latitude));
+                    yield return graph.GetVertex(edge.vertex1);
+                    firstReturned = true;
                 }
 
                 for (var s = 0; s < edge.shape.Length; s++)
@@ -143,15 +163,23 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                     var i = s;
                     if (!edge.forward) i = edge.shape.Length - i - 1;
                     var sp = edge.shape[i];
-                    
-                    coordinates.Add(new Coordinate(sp.longitude, sp.latitude));
+                    yield return sp;
                 }
                 
-                var v2Location = graph.GetVertex(edge.vertex2);
-                coordinates.Add(new Coordinate(v2Location.longitude, v2Location.latitude));
+                yield return graph.GetVertex(edge.vertex2);
+            }
+        }
+
+        public static Feature? ToPolygon(this TiledBarrierGraph graph, int face)
+        {
+            var coordinates = new List<Coordinate>();
+            foreach (var c in graph.FaceToClockwiseCoordinates(face))
+            {
+                coordinates.Add(new Coordinate(c.longitude, c.latitude));
             }
             
-            return new Feature(new NetTopologySuite.Geometries.Polygon(new LinearRing(coordinates.ToArray())), new AttributesTable {{"face", face}});
+            return new Feature(new NetTopologySuite.Geometries.Polygon(new LinearRing(coordinates.ToArray())), 
+                new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}});
         }
     }
 }

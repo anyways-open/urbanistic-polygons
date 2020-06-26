@@ -1,38 +1,34 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using ANYWAYS.UrbanisticPolygons.Tiles;
 using OsmSharp.Tags;
 
-[assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests")]
-namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
+namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
 {
-    internal class TiledBarrierGraph
+    internal class TiledPolygonGraph
     {
-        private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face> _graph = new Graph<(double lon, double lat), BarrierGraphEdge, Face>();
-        private readonly Dictionary<long, int> _vertexNodes = new Dictionary<long, int>();
-        private readonly HashSet<long> _ways = new HashSet<long>();
+        private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face> _graph = new Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face>();
+        private readonly Dictionary<Guid, int> _vertexGuids = new Dictionary<Guid, int>();
+        private readonly HashSet<Guid> _edgeGuids = new HashSet<Guid>();
         private readonly HashSet<uint> _tiles = new HashSet<uint>();
 
-        public TiledBarrierGraph(int zoom = 14)
+        public TiledPolygonGraph(int zoom = 14, int resolution = 16384)
         {
             Zoom = zoom;
+            Resolution = resolution;
         }
 
         public int Zoom { get; }
+
+        public int Resolution { get; }
 
         public int VertexCount => _graph.VertexCount;
 
         public int FaceCount => _graph.FaceCount;
 
-        public bool TryGetVertex(long node, out int vertex)
+        public bool TryGetVertex(Guid vertexGuid, out int vertex)
         {
-            return _vertexNodes.TryGetValue(node, out vertex);
-        }
-
-        public bool HasWay(long way)
-        {
-            return _ways.Contains(way);
+            return _vertexGuids.TryGetValue(vertexGuid, out vertex);
         }
 
         public void SetTileLoaded(uint tile)
@@ -50,27 +46,31 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             return _tiles.Contains(tile);
         }
 
-        public int AddVertex(double longitude, double latitude, long? node = null)
+        public int AddVertex((int x, int y, uint tileId) tiledLocation, Guid vertexGuid)
         {
-            var vertex = _graph.AddVertex((longitude, latitude));
-            if (node != null) _vertexNodes[node.Value] = vertex;
+            var vertex = _graph.AddVertex(tiledLocation);
+            _vertexGuids[vertexGuid] = vertex;
             return vertex;
         }
 
-        public (double longitude, double latitude) GetVertex(int vertex)
+        public (int x, int y, uint tileId) GetVertex(int vertex)
         {
             return _graph.GetVertex(vertex);
         }
 
-        public int AddEdge(int vertex1, int vertex2, IEnumerable<(double longitude, double latitude)>? shape = null,
-            TagsCollectionBase tags = null, long? way = null)
+        public bool HasEdge(Guid edgeGuid)
         {
-            shape ??= Enumerable.Empty<(double longitude, double latitude)>();
+            return _edgeGuids.Contains(edgeGuid);
+        }
+
+        public int AddEdge(int vertex1, int vertex2, Guid edgeGuid, IEnumerable<(int x, int y, uint tileId)>? shape = null,
+            TagsCollectionBase tags = null)
+        {
+            shape ??= Enumerable.Empty<(int x, int y, uint tileId)>();
             tags ??= new TagsCollection();
+            _edgeGuids.Add(edgeGuid);
             
-            if (way != null) _ways.Add(way.Value);
-            
-            return _graph.AddEdge(vertex1, vertex2, new BarrierGraphEdge()
+            return _graph.AddEdge(vertex1, vertex2, new PolygonGraphEdge()
             {
                 Shape = shape.ToArray(),
                 Tags = tags
@@ -80,15 +80,6 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         public void DeleteEdge(int edge)
         {
             _graph.DeleteEdge(edge);
-        }
-        
-        public void ReverseEdge(int edge)
-        {
-            _graph.ReverseEdge(edge, ed => new BarrierGraphEdge()
-            {
-                Shape = ed.Shape.Reverse().ToArray(),
-                Tags = ed.Tags
-            });
         }
 
         public void ResetFaces()
@@ -106,19 +97,19 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             _graph.SetFace(edge, left, face);
         }
         
-        public BarrierGraphEnumerator GetEnumerator()
+        public GraphEnumerator GetEnumerator()
         {
-            return new BarrierGraphEnumerator(this);
+            return new GraphEnumerator(this);
         }
         
-        public BarrierGraphFaceEnumerator GetFaceEnumerator()
+        public GraphFaceEnumerator GetFaceEnumerator()
         {
-            return new BarrierGraphFaceEnumerator(this);
+            return new GraphFaceEnumerator(this);
         }
 
-        private struct BarrierGraphEdge
+        private struct PolygonGraphEdge
         {
-            public (double longitude, double latitude)[] Shape { get; set; }
+            public (int x, int y, uint tileId)[] Shape { get; set; }
         
             public TagsCollectionBase Tags { get; set; }
         }
@@ -128,11 +119,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             
         }
 
-        public class BarrierGraphEnumerator
+        public class GraphEnumerator
         {
-            private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face>.Enumerator _enumerator;
+            private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face>.Enumerator _enumerator;
 
-            public BarrierGraphEnumerator(TiledBarrierGraph graph)
+            public GraphEnumerator(TiledPolygonGraph graph)
             {
                 Graph = graph;
                 
@@ -149,7 +140,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 return _enumerator.MoveNext();
             }
 
-            public TiledBarrierGraph Graph { get; }
+            public TiledPolygonGraph Graph { get; }
 
             public int Edge => _enumerator.Edge;
 
@@ -163,16 +154,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
             public bool Forward => _enumerator.Forward;
 
-            public (double longitude, double latitude)[] Shape => _enumerator.Data.Shape;
+            public (int x, int y, uint tileId)[] Shape => _enumerator.Data.Shape;
 
             public TagsCollectionBase Tags => _enumerator.Data.Tags;
         }
         
-        public class BarrierGraphFaceEnumerator
+        public class GraphFaceEnumerator
         {
-            private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face>.FaceEnumerator _enumerator;
+            private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face>.FaceEnumerator _enumerator;
 
-            public BarrierGraphFaceEnumerator(TiledBarrierGraph graph)
+            public GraphFaceEnumerator(TiledPolygonGraph graph)
             {
                 Graph = graph;
                 
@@ -189,7 +180,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 return _enumerator.MoveNext();
             }
 
-            public TiledBarrierGraph Graph { get; }
+            public TiledPolygonGraph Graph { get; }
 
             public int Edge => _enumerator.Edge;
 
@@ -199,7 +190,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
             public bool IsLeft => _enumerator.IsLeft;
 
-            public (double longitude, double latitude)[] Shape => _enumerator.Data.Shape;
+            public (int x, int y, uint tileId)[] Shape => _enumerator.Data.Shape;
 
             public TagsCollectionBase Tags => _enumerator.Data.Tags;
         }

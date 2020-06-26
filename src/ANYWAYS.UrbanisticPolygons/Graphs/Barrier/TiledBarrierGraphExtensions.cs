@@ -1,6 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
+using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Algorithm;
 using NetTopologySuite.Features;
@@ -55,9 +56,12 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                         if (edgeToCheck != null && !edgeToCheck.Contains(edgeEnumerator1.Edge)) continue;
                         if (!edgeEnumerator2.MoveTo(v2)) continue;
 
+                        var box1 = edgeEnumerator1.CompleteShape().ToBox();
                         while (edgeEnumerator2.MoveNext())
                         {
                             if (!edgeEnumerator2.Forward) continue; // only consider forward directions
+                            var box2 = edgeEnumerator2.CompleteShape().ToBox();
+                            if (!box1.Overlaps(box2)) continue;
                             
                             // intersect here and use the first result.
                             var intersectionResult = edgeEnumerator1.Intersect(edgeEnumerator2);
@@ -189,6 +193,27 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             }
         }
 
+        internal static void StandardizeEdges(this TiledBarrierGraph graph)
+        {
+            var enumerator = graph.GetEnumerator();
+            for (var v = 0; v < graph.VertexCount; v++)
+            {
+                if (!enumerator.MoveTo(v)) continue;
+                var v1Location = graph.GetVertex(v);
+
+                while (enumerator.MoveNext())
+                {
+                    if (!enumerator.Forward) continue;
+
+                    var v2Location = graph.GetVertex(enumerator.Vertex2);
+
+                    if (v1Location.IsLeftOf(v2Location)) continue;
+
+                    graph.ReverseEdge(enumerator.Edge);
+                }
+            }
+        }
+
         internal static IEnumerable<uint> GetTiles(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
         {
             var zoom = enumerator.Graph.Zoom;
@@ -312,7 +337,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
                     yield return new Feature(lineString, attributes);
                 }
-                if (hasEdge) yield return new Feature(graph.ToPoint(v), new AttributesTable {{"vertex", v}});
+                
+                if (hasEdge) yield return new Feature(graph.ToPoint(v), new AttributesTable {{"vertex", v}, {"vertex_guid", graph.GetVertexGuid(v)}});
             }
 
             foreach (var polygon in graph.GetAllPolygons())
@@ -323,6 +349,18 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             foreach (var tileFeature in graph.ToTileFeatures())
             {
                 yield return tileFeature;
+            }
+        }
+
+        internal static IEnumerable<Feature> GetAllPolygons(this TiledBarrierGraph graph)
+        {
+            // for every face, determine polygon.
+            for (var f = 0; f < graph.FaceCount; f++)
+            {
+                var polygon = graph.ToPolygon(f);
+                if (polygon == null) continue;
+                
+                yield return polygon;
             }
         }
 

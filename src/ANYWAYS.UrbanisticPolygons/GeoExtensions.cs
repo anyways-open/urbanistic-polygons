@@ -8,17 +8,43 @@ namespace ANYWAYS.UrbanisticPolygons
     /// </summary>
     internal static class GeoExtensions
     {
-        private const double E = 0.0000000001;
+        private const double E = 0.00000000000001;
         private const double RadiusOfEarth = 6371000;
 
-        public static double Angle((double longitude, double latitude) coordinate1, (double longitude, double latitude) coordinate2, 
+        public static bool IsLeftOf(this (double longitude, double latitude) coordinate1,
+            (double longitude, double latitude) coordinate2)
+        {
+            return coordinate1.longitude < coordinate2.longitude;
+        }
+
+        public static double Angle((double longitude, double latitude) coordinate1,
+            (double longitude, double latitude) coordinate2,
             (double longitude, double latitude) coordinate3)
         {
             var v11 = coordinate1.latitude - coordinate2.latitude;
             var v10 = coordinate1.longitude - coordinate2.longitude;
 
+            var minDiff = 0.000001; 
+            if (Math.Abs(v11) < minDiff || Math.Abs(v10) < minDiff)
+            {
+                var factor = System.Math.Max(
+                    (minDiff * 2) / Math.Abs(v11), 
+                    (minDiff * 2) / Math.Abs(v10));
+                v11 *= factor;
+                v10 *= factor;
+            }
+
             var v21 = coordinate3.latitude - coordinate2.latitude;
             var v20 = coordinate3.longitude - coordinate2.longitude;
+            
+            if (Math.Abs(v21) < minDiff || Math.Abs(v20) < minDiff)
+            {
+                var factor = System.Math.Max(
+                    (minDiff * 2) / Math.Abs(v21), 
+                    (minDiff * 2) / Math.Abs(v20));
+                v21 *= factor;
+                v20 *= factor;
+            }
 
             var v1size = System.Math.Sqrt(v11 * v11 + v10 * v10);
             var v2size = System.Math.Sqrt(v21 * v21 + v20 * v20);
@@ -44,7 +70,7 @@ namespace ANYWAYS.UrbanisticPolygons
                     return (2 * Math.PI);
                 }
             }
-            
+
             if (Math.Abs(dot) < E)
             {
                 // The dot-product is pretty small or close to zero -> the coordinates are perpendicular
@@ -112,7 +138,7 @@ namespace ANYWAYS.UrbanisticPolygons
                 {
                     // dot > 0 and cross <= 0
                     // Quadrant 3
-                    angle = -(- System.Math.PI + System.Math.Asin(cross / (v1size * v2size)));
+                    angle = -(-System.Math.PI + System.Math.Asin(cross / (v1size * v2size)));
                     if (angle < System.Math.PI + System.Math.PI / 4f)
                     {
                         // use cosine.
@@ -125,45 +151,46 @@ namespace ANYWAYS.UrbanisticPolygons
 
             return angle;
         }
-        
-         /// <summary>
-         /// Returns an estimate of the distance between the two given coordinates.
-         /// </summary>
-         /// <param name="coordinate1">The first coordinate.</param>
-         /// <param name="coordinate2">The second coordinate.</param>
-         /// <remarks>Accuracy decreases with distance.</remarks>
-         public static double DistanceEstimateInMeter(this (double longitude, double latitude) coordinate1, 
-             (double longitude, double latitude) coordinate2)
-         {
-             var lat1Rad = (coordinate1.latitude / 180d) * System.Math.PI;
-             var lon1Rad = (coordinate1.longitude / 180d) * System.Math.PI;
-             var lat2Rad = (coordinate2.latitude / 180d) * System.Math.PI;
-             var lon2Rad = (coordinate2.longitude / 180d) * System.Math.PI;
-
-             var x = (lon2Rad - lon1Rad) * System.Math.Cos((lat1Rad + lat2Rad) / 2.0);
-             var y = lat2Rad - lat1Rad;
-
-             var m = System.Math.Sqrt(x * x + y * y) * RadiusOfEarth;
-
-             return m;
-         }
 
         /// <summary>
-         /// Returns a coordinate offset with a given distance.
-         /// </summary>
-         /// <param name="coordinate">The coordinate.</param>
-         /// <param name="meter">The distance.</param>
-         /// <returns>An offset coordinate.</returns>
-         public static (double longitude, double latitude) OffsetWithDistanceX(this (double longitude, double latitude) coordinate, double meter)
-         {
-             var offset = 0.001;
-             var offsetLon = (coordinate.longitude + offset, coordinate.latitude);
-             var lonDistance = offsetLon.DistanceEstimateInMeter(coordinate);
+        /// Returns an estimate of the distance between the two given coordinates.
+        /// </summary>
+        /// <param name="coordinate1">The first coordinate.</param>
+        /// <param name="coordinate2">The second coordinate.</param>
+        /// <remarks>Accuracy decreases with distance.</remarks>
+        public static double DistanceEstimateInMeter(this (double longitude, double latitude) coordinate1,
+            (double longitude, double latitude) coordinate2)
+        {
+            var lat1Rad = (coordinate1.latitude / 180d) * System.Math.PI;
+            var lon1Rad = (coordinate1.longitude / 180d) * System.Math.PI;
+            var lat2Rad = (coordinate2.latitude / 180d) * System.Math.PI;
+            var lon2Rad = (coordinate2.longitude / 180d) * System.Math.PI;
 
-             return (coordinate.longitude + (meter / lonDistance) * offset, 
-                 coordinate.latitude);
-         }
-            
+            var x = (lon2Rad - lon1Rad) * System.Math.Cos((lat1Rad + lat2Rad) / 2.0);
+            var y = lat2Rad - lat1Rad;
+
+            var m = System.Math.Sqrt(x * x + y * y) * RadiusOfEarth;
+
+            return m;
+        }
+
+        /// <summary>
+        /// Returns a coordinate offset with a given distance.
+        /// </summary>
+        /// <param name="coordinate">The coordinate.</param>
+        /// <param name="meter">The distance.</param>
+        /// <returns>An offset coordinate.</returns>
+        public static (double longitude, double latitude) OffsetWithDistanceX(
+            this (double longitude, double latitude) coordinate, double meter)
+        {
+            var offset = 0.001;
+            var offsetLon = (coordinate.longitude + offset, coordinate.latitude);
+            var lonDistance = offsetLon.DistanceEstimateInMeter(coordinate);
+
+            return (coordinate.longitude + (meter / lonDistance) * offset,
+                coordinate.latitude);
+        }
+
 //         
 //         internal static double DistanceEstimateInMeterShape(this (double longitude, double latitude) coordinate1, 
 //             (double longitude, double latitude) coordinate2, IEnumerable<(double longitude, double latitude)>? shape = null)
@@ -503,18 +530,48 @@ namespace ANYWAYS.UrbanisticPolygons
 //                 coordinate.latitude - (sizeInMeters / latDistance) * 0.1));
 //         }
 //
-//         /// <summary>
-//         /// Returns true if the box overlaps the given coordinate.
-//         /// </summary>
-//         /// <param name="box">The box.</param>
-//         /// <param name="coordinate">The coordinate.</param>
-//         /// <returns>True of the coordinate is inside the bounding box.</returns>
-//         public static bool Overlaps(
-//             this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
-//             (double longitude, double latitude) coordinate)
-//         {
-//            return box.bottomRight.latitude < coordinate.latitude && coordinate.latitude <= box.topLeft.latitude &&
-//                   box.topLeft.longitude < coordinate.longitude && coordinate.longitude <= box.bottomRight.longitude;
-//         }
+
+        public static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)
+            ToBox(this IEnumerable<(double longitude, double latitude)> coordinates)
+        {
+            using var enumerator = coordinates.GetEnumerator();
+            if (!enumerator.MoveNext())
+                throw new ArgumentException("Cannot build box from empty coordinates set.", nameof(coordinates));
+            var top = enumerator.Current.latitude;
+            var left = enumerator.Current.longitude;
+            var bottom = top;
+            var right = left;
+
+            while (enumerator.MoveNext())
+            {
+                var (lon, lat) = enumerator.Current;
+                if (top < lat) top = lat;
+                if (bottom > lat) bottom = lat;
+                if (left > lon) left = lon;
+                if (right < lon) right = lon;
+            }
+
+            return ((left, top), (right, bottom));
+        }
+        
+        public static bool Overlaps(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
+            (double longitude, double latitude) coordinate)
+        {
+            return box.bottomRight.latitude < coordinate.latitude && coordinate.latitude <= box.topLeft.latitude &&
+                   box.topLeft.longitude < coordinate.longitude && coordinate.longitude <= box.bottomRight.longitude;
+        }
+        
+        public static bool Overlaps(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
+            ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) other)
+        {
+            if (box.topLeft.longitude > other.bottomRight.longitude) return false;            
+            if (box.topLeft.latitude < other.bottomRight.latitude) return false;
+            if (box.bottomRight.longitude < other.topLeft.longitude) return false;
+            if (box.bottomRight.latitude > other.topLeft.latitude) return false;
+
+            return true;
+        }
     }
 }

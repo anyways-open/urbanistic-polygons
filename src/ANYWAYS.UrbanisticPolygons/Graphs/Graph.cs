@@ -42,6 +42,18 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             return id;
         }
 
+        public void ReverseEdge(int edge, Func<TEdgeData, TEdgeData>? reverse = null)
+        {
+            var edgeDetails = _edges[edge];
+            var edgeData = edgeDetails.edge;
+            if (reverse != null) edgeData = reverse(edgeData);
+            
+            _edges[edge] = (edgeData, edgeDetails.vertex2, edgeDetails.vertex1, edgeDetails.nextEdge2,
+                edgeDetails.nextEdge1,
+                edgeDetails.right, edgeDetails.left, edgeDetails.nextRight, edgeDetails.nextLeft,
+                edgeDetails.nextRightLeft, edgeDetails.nextLeftLeft);
+        }
+
         public void ResetFaces()
         {
             _faces.Clear();
@@ -117,7 +129,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
 
                     // edge is not first edge, overwrite pointer on the previous edge.
                     var previousEdgeDetails = _edges[previousPointer];
-                    if (previousEdgeDetails.vertex1 == vertex)
+                    if (previousEdgeDetails.vertex1 == vertex && previousEdgeDetails.vertex2 == vertex)
+                    {
+                        _edges[previousPointer] = (previousEdgeDetails.edge, previousEdgeDetails.vertex1,
+                            previousEdgeDetails.vertex2,
+                            nextPointer, nextPointer, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue, false, false);
+                    }
+                    else if (previousEdgeDetails.vertex1 == vertex)
                     {
                         _edges[previousPointer] = (previousEdgeDetails.edge, previousEdgeDetails.vertex1,
                             previousEdgeDetails.vertex2,

@@ -1,18 +1,47 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using OsmSharp;
 using OsmSharp.Tags;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
+using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
+using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using OsmSharp.Logging;
 
 [assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests.Functional")]
 namespace ANYWAYS.UrbanisticPolygons
 {
-    internal static class BarrierGraphBuilder
+    internal static class TiledBarrierGraphBuilder
     {
+        internal static void BuildForTile(uint tile, string folder, Func<uint, IEnumerable<OsmGeo>> getTile,
+            Func<TagsCollectionBase, bool> isBarrier)
+        {
+            var file = Path.Combine(folder, $"{tile}.tile.graph.zip");
+            if (File.Exists(file)) return;
+            
+            // load data for tile.
+            var graph = new TiledBarrierGraph();
+            graph.LoadForTile(tile, getTile, isBarrier);
+            
+            // run face assignment for the tile.
+            var result =  graph.AssignFaces(tile);
+            while (!result.success)
+            {
+                // extra tiles need loading.-
+                graph.AddTiles(result.missingTiles, getTile, isBarrier);
+                
+                // try again.
+                result =  graph.AssignFaces(tile);
+            }
+            
+            using var stream = File.Open(file, FileMode.Create);
+            using var compressedStream = new GZipStream(stream, CompressionLevel.Fastest);
+            graph.WriteTileTo(compressedStream, tile);
+        }
+        
         internal static void LoadForTile(this TiledBarrierGraph graph, uint tile,
             Func<uint, IEnumerable<OsmGeo>> getTile,
             Func<TagsCollectionBase, bool> isBarrier)
@@ -79,6 +108,10 @@ namespace ANYWAYS.UrbanisticPolygons
             // prune graph.
             graph.PruneDeadEnds();
             graph.PruneShapePoints();
+            
+            // standardize edges
+            // loading them in a different order could lead to different start and end points
+            graph.StandardizeEdges();
         }
         
         private static IEnumerable<int> AddNonPlanar(this TiledBarrierGraph graph, IEnumerable<OsmGeo> osmGeos,
@@ -175,7 +208,7 @@ namespace ANYWAYS.UrbanisticPolygons
                             $"Node {node} in way {way.Id} not found!");
                         if (nodeLocation == null) 
                         {
-                            OsmSharp.Logging.Logger.Log(nameof(BarrierGraphBuilder), TraceEventType.Warning,
+                            OsmSharp.Logging.Logger.Log(nameof(TiledBarrierGraphBuilder), TraceEventType.Warning,
                             $"Node location for node {node} in way {way.Id} not found!");
                         }
                         else

@@ -32,7 +32,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 yield return nextEnumerator;
             }
         }
-
+        
         internal static (double longitude, double latitude) FirstNonVertex2(
             this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
         {
@@ -66,6 +66,62 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 return enumerator.Shape[^1];
             }
         }
+        
+        // internal static (double longitude, double latitude) FirstNonVertex2(
+        //     this TiledBarrierGraph.BarrierGraphEnumerator enumerator, double minDistance = 2)
+        // {
+        //     if (enumerator.Shape.Length == 0)
+        //     {
+        //         return enumerator.Graph.GetVertex(enumerator.Vertex1);
+        //     }
+        //     
+        //     var distance = 0.0;
+        //     var previous = enumerator.Graph.GetVertex(enumerator.Vertex2);
+        //     for (var i = 0; i < enumerator.Shape.Length; i++)
+        //     {
+        //         var s = i;
+        //         if (enumerator.Forward)
+        //         {
+        //             s = enumerator.Shape.Length - i - 1;
+        //         }
+        //
+        //         var p = enumerator.Shape[s];
+        //         distance += previous.DistanceEstimateInMeter(p);
+        //         if (distance > minDistance) return p;
+        //
+        //         previous = p;
+        //     }
+        //     
+        //     return enumerator.Graph.GetVertex(enumerator.Vertex1);
+        // }
+        //
+        // internal static (double longitude, double latitude) FirstNonVertex1(
+        //     this TiledBarrierGraph.BarrierGraphEnumerator enumerator, double minDistance = 2)
+        // {
+        //     if (enumerator.Shape.Length == 0)
+        //     {
+        //         return enumerator.Graph.GetVertex(enumerator.Vertex2);
+        //     }
+        //     
+        //     var distance = 0.0;
+        //     var previous = enumerator.Graph.GetVertex(enumerator.Vertex1);
+        //     for (var i = 0; i < enumerator.Shape.Length; i++)
+        //     {
+        //         var s = i;
+        //         if (!enumerator.Forward)
+        //         {
+        //             s = enumerator.Shape.Length - i - 1;
+        //         }
+        //
+        //         var p = enumerator.Shape[s];
+        //         distance += previous.DistanceEstimateInMeter(p);
+        //         if (distance > minDistance) return p;
+        //
+        //         previous = p;
+        //     }
+        //     
+        //     return enumerator.Graph.GetVertex(enumerator.Vertex2);
+        // }
 
         internal static TiledBarrierGraph.BarrierGraphEnumerator? NextRight(
             this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
