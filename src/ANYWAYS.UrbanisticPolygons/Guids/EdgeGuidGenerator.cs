@@ -20,6 +20,14 @@ namespace ANYWAYS.UrbanisticPolygons.Guids
         public static Guid GetEdgeGuid(this TiledBarrierGraph.BarrierGraphEnumerator enumerator)
         {
             var bytes = new List<byte>();
+
+            if (!enumerator.Forward)
+            {
+                var otherEnumerator = enumerator.Graph.GetEnumerator();
+                otherEnumerator.MoveTo(enumerator.Vertex2);
+                otherEnumerator.MoveNextUntil(enumerator.Edge);
+                enumerator = otherEnumerator;
+            }
             
             foreach (var c in enumerator.CompleteShape())
             {

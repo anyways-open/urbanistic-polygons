@@ -39,8 +39,6 @@ namespace ANYWAYS.UrbanisticPolygons
 
             return defaultValue;
         }
-
-
         /// <summary>
         /// Calculates the resistance for the given tag combination, returns null if this is not a barrier
         /// </summary>

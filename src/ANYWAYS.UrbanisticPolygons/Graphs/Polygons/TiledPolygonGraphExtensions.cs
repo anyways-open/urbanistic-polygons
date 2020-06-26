@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.IO;
+using ANYWAYS.UrbanisticPolygons.Landuse;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
@@ -70,7 +71,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                             stream.ReadWithSizeString(buffer));
                     }
 
-                    if (!graph.HasEdge(edgeGuid))
+                    if (!graph.TryGetEdge(edgeGuid, out _))
                     {
                         graph.AddEdge(vertex1, vertex2, edgeGuid, shape, tagsCollection);
                     }
@@ -79,17 +80,42 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                 guid = stream.ReadNullableGuid();
             }
 
-            // var c = stream.Read(buffer, 0, 4);
-            // while (c == 4)
-            // {
-            //     var edges = BitConverter.ToInt32(buffer, 0);
-            //     for (var e = 0; e < edges; e++)
-            //     {
-            //         graph.SetFace();
-            //     }
-            //     
-            //     c = stream.Read(buffer, 0, 4);
-            // }
+            // add the default face if not there yet.
+            if (graph.FaceCount == 0) graph.AddFace(); 
+            
+            // read faces.
+            guid = stream.ReadNullableGuid();
+            while (guid != null)
+            {
+                // check if the face exists.
+                int? face = null;
+                if (!graph.TryGetFace(guid.Value, out _))
+                {
+                    face = graph.AddFace(guid.Value);
+                }
+                
+                // read all edges.
+                var edges = stream.ReadInt32();
+                for (var e = 0; e < edges; e++)
+                {
+                    var edgeGuid = stream.ReadGuid();
+                    var forward = stream.ReadByte() == 1;
+
+                    if (!graph.TryGetEdge(edgeGuid, out var edgeId))
+                    {
+                        throw new Exception("Edge in face not found!");
+                    }
+
+                    // add only if face didn't exist yet.
+                    if (face.HasValue) graph.SetFace(edgeId, !forward, face.Value);
+                }
+                
+                // read attributes.
+                var attributes = stream.ReadAttributes();
+                if (face.HasValue) graph.SetFaceData(face.Value, attributes);
+                
+                guid = stream.ReadNullableGuid();
+            }
         }
 
         private static bool IsEmptyGuid(this IReadOnlyList<byte> buffer)
@@ -138,7 +164,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
         internal static IEnumerable<Feature> GetAllPolygons(this TiledPolygonGraph graph)
         {
             // for every face, determine polygon.
-            for (var f = 0; f < graph.FaceCount; f++)
+            for (var f = 1; f < graph.FaceCount; f++)
             {
                 var polygon = graph.ToPolygon(f);
                 if (polygon == null) continue;
@@ -155,9 +181,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                 var cLocation = c.FromLocalTileCoordinates(graph.Zoom, graph.Resolution);
                 coordinates.Add(new Coordinate(cLocation.longitude, cLocation.latitude));
             }
+
+            var attributes = new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}};
+            var faceAttributes = graph.GetFaceData(face);
+            foreach (var (type, per) in faceAttributes)
+            {
+                attributes.Add(type, per);
+            }
             
             return new Feature(new NetTopologySuite.Geometries.Polygon(new LinearRing(coordinates.ToArray())), 
-                new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}});
+                attributes);
         }
 
         public static IEnumerable<(int x, int y, uint tileId)> FaceToClockwiseCoordinates(
@@ -225,11 +258,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                 var box = TileStatic.Box(graph.Zoom, tile);
                 var polygon = new NetTopologySuite.Geometries.Polygon(new LinearRing(new []
                 {
-                    new Coordinate(box.left, box.top), 
-                    new Coordinate(box.right, box.top), 
-                    new Coordinate(box.right, box.bottom), 
-                    new Coordinate(box.left, box.bottom), 
-                    new Coordinate(box.left, box.top)
+                    new Coordinate(box.topLeft.longitude, box.topLeft.latitude), 
+                    new Coordinate(box.bottomRight.longitude, box.topLeft.latitude), 
+                    new Coordinate(box.bottomRight.longitude, box.bottomRight.latitude), 
+                    new Coordinate(box.topLeft.longitude, box.bottomRight.latitude), 
+                    new Coordinate(box.topLeft.longitude, box.topLeft.latitude)
                 }));
             
                 yield return new Feature(polygon, new AttributesTable{{"tile_id", tile},{"zoom", graph.Zoom}});

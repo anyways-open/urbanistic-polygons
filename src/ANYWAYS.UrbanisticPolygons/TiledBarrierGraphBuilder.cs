@@ -8,7 +8,9 @@ using OsmSharp.Tags;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization;
+using ANYWAYS.UrbanisticPolygons.Landuse;
 using ANYWAYS.UrbanisticPolygons.Tiles;
+using NetTopologySuite.Geometries;
 using OsmSharp.Logging;
 
 [assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests.Functional")]
@@ -20,7 +22,7 @@ namespace ANYWAYS.UrbanisticPolygons
             Func<TagsCollectionBase, bool> isBarrier)
         {
             var file = Path.Combine(folder, $"{tile}.tile.graph.zip");
-            if (File.Exists(file)) return;
+            //if (File.Exists(file)) return;
             
             // load data for tile.
             var graph = new TiledBarrierGraph();
@@ -36,6 +38,18 @@ namespace ANYWAYS.UrbanisticPolygons
                 // try again.
                 result =  graph.AssignFaces(tile);
             }
+            
+            // assign landuse.
+            IEnumerable<(Polygon polygon, string type)> GetLanduse(((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+            {
+                return LandusePolygons.GetLandusePolygons(box, graph.Zoom, getTile, t =>
+                {
+                    if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
+
+                    return null;
+                });
+            }
+            graph.AssignLanduse(tile, GetLanduse);            
             
             using var stream = File.Open(file, FileMode.Create);
             using var compressedStream = new GZipStream(stream, CompressionLevel.Fastest);

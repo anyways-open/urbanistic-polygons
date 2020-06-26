@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ANYWAYS.UrbanisticPolygons.Tiles
 {
@@ -22,7 +23,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
             return (uint)(y * xMax + x);
         }
 
-        public static (double left, double top, double right, double bottom) Box(int zoom, uint tileId)
+        public static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) Box(int zoom, uint tileId)
         {
             var tile = ToTile(zoom, tileId);
             
@@ -34,7 +35,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
             var right = ((tile.x + 1) / Math.Pow(2.0, zoom) * 360.0) - 180.0;
             var bottom = (180.0 / Math.PI * Math.Atan(Math.Sinh(n)));
 
-            return (left, top, right, bottom);
+            return ((left, top), (right, bottom));
         }
 
         public static (int x, int y, uint tileId) ToLocalTileCoordinates(int zoom, (double longitude, double latitude) location,
@@ -121,6 +122,20 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
                  / Math.PI) / 2f * n);
             
             return (x, y);
+        }
+
+        public static IEnumerable<(uint x, uint y)> TilesFor(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
+            int zoom)
+        {
+            var topLeft = TileStatic.WorldToTile(box.topLeft.longitude, box.topLeft.latitude, zoom);
+            var bottomRight = TileStatic.WorldToTile(box.topLeft.longitude, box.topLeft.latitude, zoom);
+            
+            for (var x = topLeft.x; x <= bottomRight.x; x++)
+            for (var y = topLeft.y; y <= topLeft.y; y++)
+            {
+                yield return (x, y);
+            }
         }
     }
 }

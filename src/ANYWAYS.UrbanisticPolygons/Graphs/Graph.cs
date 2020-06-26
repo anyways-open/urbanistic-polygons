@@ -73,6 +73,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             return id;
         }
 
+        public TFaceData GetFaceData(int face)
+        {
+            return _faces[face].face;
+        }
+
+        public void SetFaceData(int face, TFaceData data)
+        {
+            _faces[face] = (data, _faces[face].edge, _faces[face].left);
+        }
+
         public void SetFace(int edge, bool left, int face)
         {
             var edgeDetails = _edges[edge];

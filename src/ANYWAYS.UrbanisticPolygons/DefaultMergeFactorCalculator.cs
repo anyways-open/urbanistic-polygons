@@ -59,8 +59,7 @@ namespace ANYWAYS.UrbanisticPolygons
             ("natural", "water", "water"),
             ("waterway", "riverbank", "water")
         );
-
-
+        
         public DefaultMergeFactorCalculator(double expectedPolygonSize)
         {
             _expectedPolygonSize = expectedPolygonSize;

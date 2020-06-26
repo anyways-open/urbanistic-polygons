@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Landuse;
 using OsmSharp.Tags;
 
 namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
 {
     internal class TiledPolygonGraph
     {
-        private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face> _graph = new Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face>();
+        private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, LanduseAttributes> _graph = new Graph<(int x, int y, uint tileId), PolygonGraphEdge, LanduseAttributes>();
         private readonly Dictionary<Guid, int> _vertexGuids = new Dictionary<Guid, int>();
-        private readonly HashSet<Guid> _edgeGuids = new HashSet<Guid>();
+        private readonly Dictionary<Guid, int> _edgeGuids = new Dictionary<Guid, int>();
+        private readonly Dictionary<Guid, int> _faceGuids = new Dictionary<Guid, int>();
         private readonly HashSet<uint> _tiles = new HashSet<uint>();
 
         public TiledPolygonGraph(int zoom = 14, int resolution = 16384)
@@ -58,9 +60,9 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
             return _graph.GetVertex(vertex);
         }
 
-        public bool HasEdge(Guid edgeGuid)
+        public bool TryGetEdge(Guid edgeGuid, out int edge)
         {
-            return _edgeGuids.Contains(edgeGuid);
+            return _edgeGuids.TryGetValue(edgeGuid, out edge);
         }
 
         public int AddEdge(int vertex1, int vertex2, Guid edgeGuid, IEnumerable<(int x, int y, uint tileId)>? shape = null,
@@ -68,13 +70,14 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
         {
             shape ??= Enumerable.Empty<(int x, int y, uint tileId)>();
             tags ??= new TagsCollection();
-            _edgeGuids.Add(edgeGuid);
             
-            return _graph.AddEdge(vertex1, vertex2, new PolygonGraphEdge()
+            var id = _graph.AddEdge(vertex1, vertex2, new PolygonGraphEdge()
             {
                 Shape = shape.ToArray(),
                 Tags = tags
             });
+            _edgeGuids.Add(edgeGuid, id);
+            return id;
         }
 
         public void DeleteEdge(int edge)
@@ -87,9 +90,26 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
             _graph.ResetFaces();
         }
         
-        public int AddFace()
+        public int AddFace(Guid? guid = null)
         {
-            return _graph.AddFace(default);
+            var id = _graph.AddFace(default);
+            if (guid != null) _faceGuids[guid.Value] = id;
+            return id;
+        }
+
+        public void SetFaceData(int face, LanduseAttributes data)
+        {
+            _graph.SetFaceData(face, data); 
+        }
+
+        public LanduseAttributes GetFaceData(int face)
+        {
+            return _graph.GetFaceData(face);
+        }
+
+        public bool TryGetFace(Guid guid, out int face)
+        {
+            return _faceGuids.TryGetValue(guid, out face);
         }
 
         public void SetFace(int edge, bool left, int face)
@@ -114,14 +134,9 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
             public TagsCollectionBase Tags { get; set; }
         }
 
-        private struct Face
-        {
-            
-        }
-
         public class GraphEnumerator
         {
-            private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face>.Enumerator _enumerator;
+            private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, LanduseAttributes>.Enumerator _enumerator;
 
             public GraphEnumerator(TiledPolygonGraph graph)
             {
@@ -161,7 +176,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
         
         public class GraphFaceEnumerator
         {
-            private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, Face>.FaceEnumerator _enumerator;
+            private readonly Graph<(int x, int y, uint tileId), PolygonGraphEdge, LanduseAttributes>.FaceEnumerator _enumerator;
 
             public GraphFaceEnumerator(TiledPolygonGraph graph)
             {

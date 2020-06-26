@@ -212,38 +212,38 @@ namespace ANYWAYS.UrbanisticPolygons.Graph
             return this;
         }
 
-        public List<(CompleteWay geometry, List<(long, long)> boundaryEdges)> GetPolygons()
-        {
-            /* Determines all the polygons
-             We know that every edge should be part of exactly two polygons;
-             so this gives us a starting point: enumerate every edge, start walking along one side
-             
-             Note that the graph is planar, so there are no crossings
-             */
-
-            var forbiddenOrders = new HashSet<((long, long), (long, long))>();
-
-            var polygons = new List<(CompleteWay geometry, List<(long, long)> boundaryEdges)>();
-            foreach (var ((from, to), _) in _edges)
-            {
-                var poly = WalkAround(from, to, forbiddenOrders);
-                if (poly == null)
-                {
-                    continue;
-                }
-
-                if (poly.Value.geometry.IsClockwise())
-                {
-                    // THis is the outline polygon containing everything
-                    // We skip it
-                    continue;
-                }
-
-                polygons.Add(poly.Value);
-            }
-
-            return polygons;
-        }
+        // public List<(CompleteWay geometry, List<(long, long)> boundaryEdges)> GetPolygons()
+        // {
+        //     /* Determines all the polygons
+        //      We know that every edge should be part of exactly two polygons;
+        //      so this gives us a starting point: enumerate every edge, start walking along one side
+        //      
+        //      Note that the graph is planar, so there are no crossings
+        //      */
+        //
+        //     var forbiddenOrders = new HashSet<((long, long), (long, long))>();
+        //
+        //     var polygons = new List<(CompleteWay geometry, List<(long, long)> boundaryEdges)>();
+        //     foreach (var ((from, to), _) in _edges)
+        //     {
+        //         var poly = WalkAround(from, to, forbiddenOrders);
+        //         if (poly == null)
+        //         {
+        //             continue;
+        //         }
+        //
+        //         if (poly.Value.geometry.IsClockwise())
+        //         {
+        //             // THis is the outline polygon containing everything
+        //             // We skip it
+        //             continue;
+        //         }
+        //
+        //         polygons.Add(poly.Value);
+        //     }
+        //
+        //     return polygons;
+        // }
 
 
         /// <summary>

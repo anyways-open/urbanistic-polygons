@@ -170,7 +170,18 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
             }
         }
 
-        public static Feature? ToPolygon(this TiledBarrierGraph graph, int face)
+        public static Polygon? ToPolygon(this TiledBarrierGraph graph, int face)
+        {
+            var coordinates = new List<Coordinate>();
+            foreach (var c in graph.FaceToClockwiseCoordinates(face))
+            {
+                coordinates.Add(new Coordinate(c.longitude, c.latitude));
+            }
+
+            return new Polygon(new LinearRing(coordinates.ToArray()));
+        }
+
+        public static Feature? ToPolygonFeature(this TiledBarrierGraph graph, int face)
         {
             var coordinates = new List<Coordinate>();
             foreach (var c in graph.FaceToClockwiseCoordinates(face))

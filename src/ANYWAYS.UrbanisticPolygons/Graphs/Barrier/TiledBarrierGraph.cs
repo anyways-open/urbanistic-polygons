@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using ANYWAYS.UrbanisticPolygons.Landuse;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using OsmSharp.Tags;
 
@@ -9,7 +10,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 {
     internal class TiledBarrierGraph
     {
-        private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face> _graph = new Graph<(double lon, double lat), BarrierGraphEdge, Face>();
+        private readonly Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes> _graph = new Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes>();
         private readonly Dictionary<long, int> _vertexNodes = new Dictionary<long, int>();
         private readonly HashSet<long> _ways = new HashSet<long>();
         private readonly HashSet<uint> _tiles = new HashSet<uint>();
@@ -98,7 +99,17 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         
         public int AddFace()
         {
-            return _graph.AddFace(default);
+            return _graph.AddFace(new LanduseAttributes());
+        }
+
+        public void SetFaceData(int face, LanduseAttributes data)
+        {
+            _graph.SetFaceData(face, data); 
+        }
+
+        public LanduseAttributes GetFaceData(int face)
+        {
+            return _graph.GetFaceData(face);
         }
 
         public void SetFace(int edge, bool left, int face)
@@ -123,14 +134,9 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             public TagsCollectionBase Tags { get; set; }
         }
 
-        private struct Face
-        {
-            
-        }
-
         public class BarrierGraphEnumerator
         {
-            private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face>.Enumerator _enumerator;
+            private readonly Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes>.Enumerator _enumerator;
 
             public BarrierGraphEnumerator(TiledBarrierGraph graph)
             {
@@ -170,7 +176,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         
         public class BarrierGraphFaceEnumerator
         {
-            private readonly Graph<(double lon, double lat), BarrierGraphEdge, Face>.FaceEnumerator _enumerator;
+            private readonly Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes>.FaceEnumerator _enumerator;
 
             public BarrierGraphFaceEnumerator(TiledBarrierGraph graph)
             {

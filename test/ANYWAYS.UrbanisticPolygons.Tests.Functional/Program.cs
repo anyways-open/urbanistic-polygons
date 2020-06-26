@@ -7,6 +7,7 @@ using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization;
 using ANYWAYS.UrbanisticPolygons.Graphs.Polygons;
+using ANYWAYS.UrbanisticPolygons.Landuse;
 using ANYWAYS.UrbanisticPolygons.Tests.Functional.Download;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
@@ -40,6 +41,8 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
 
             var wechelderzande1 = (4.801913201808929, 51.26797859372288);
             var wechelderzande2 = (4.774868488311768, 51.267366046233136);
+            var wechelderzande3 = (4.774868488311768, 51.267366046233136);
+            var wechelderzande4 = (4.774868488311768, 51.267366046233136);
             var staden = (3.0198, 50.9743);
             var leyton = (-0.00303, 51.56436);
             var tile1 = TileStatic.WorldTileLocalId(wechelderzande1, 14);
@@ -52,18 +55,17 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
                 return DefaultMergeFactorCalculator.Barriers.TryCalculateValue(tags, out _);
             }
             
-            // // load data for tile.
-            var graph = new TiledBarrierGraph();
-            // graph.LoadForTile(tile2, GetTile, IsBarrier);
-            // File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
-            
             TiledBarrierGraphBuilder.BuildForTile(tile1, "cache", GetTile, IsBarrier);
-            TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
-
-            var polygonGraph = new TiledPolygonGraph();
-            polygonGraph.AddTileFromStream(tile1, new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile1}.tile.graph.zip")), CompressionMode.Decompress));
-            polygonGraph.AddTileFromStream(tile1, new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile2}.tile.graph.zip")), CompressionMode.Decompress));
+            //TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
             
+            var polygonGraph = new TiledPolygonGraph();
+            polygonGraph.AddTileFromStream(tile1,
+                new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile1}.tile.graph.zip")),
+                    CompressionMode.Decompress));
+            // polygonGraph.AddTileFromStream(tile2,
+            //     new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile2}.tile.graph.zip")),
+            //         CompressionMode.Decompress));
+            //
             File.WriteAllText("barriers.geojson", polygonGraph.ToFeatures().ToFeatureCollection().ToGeoJson());
         }
     }

@@ -522,6 +522,18 @@ namespace ANYWAYS.UrbanisticPolygons.IO
             return FromUnsigned(data.ReadVarUInt64());
         }
 
+        public static void WriteDouble(this Stream data, double value)
+        {
+            data.Write(BitConverter.GetBytes(value));
+        }
+
+        public static double ReadDouble(this Stream data)
+        {
+            var bytes = new byte[8];
+            data.Read(bytes, 0, 8);
+            return BitConverter.ToDouble(bytes);
+        }
+        
         public static void WriteInt64(this Stream stream, long value)
         {
             for (var b = 0; b < 8; b++)

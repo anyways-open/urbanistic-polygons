@@ -4,6 +4,7 @@ using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.IO;
+using ANYWAYS.UrbanisticPolygons.Landuse;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 
 namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization
@@ -58,10 +59,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization
             }
             stream.Write(EmptyGuid);
             
-            // write faces clockwise.
-            // REMARK: face '0' is the unassigned face.
+            // write faces.
             for (var f = 1; f < graph.FaceCount; f++)
             {
+                var faceGuid = graph.GetFaceGuid(f);
+                stream.Write(faceGuid.ToByteArray());
+                
+                // write edges.
                 var edges = graph.EnumerateFaceClockwise(f).ToList();
                 stream.Write(BitConverter.GetBytes(edges.Count));
                 foreach (var edge in edges)
@@ -70,8 +74,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization
                     enumerator.MoveNextUntil(edge.edge);
                     
                     stream.Write(enumerator.GetEdgeGuid().ToByteArray());
+                    stream.WriteByte(edge.forward ? (byte)1 :  (byte)0);
                 }
+                
+                // write attributes.
+                stream.WriteAttributes(graph.GetFaceData(f));
             }
+            stream.Write(EmptyGuid);
         }
 
         private static byte[] GetVertexLocationBytes(this TiledBarrierGraph graph, int v)

@@ -531,12 +531,12 @@ namespace ANYWAYS.UrbanisticPolygons
 //         }
 //
 
-        public static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)
+        public static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)?
             ToBox(this IEnumerable<(double longitude, double latitude)> coordinates)
         {
             using var enumerator = coordinates.GetEnumerator();
             if (!enumerator.MoveNext())
-                throw new ArgumentException("Cannot build box from empty coordinates set.", nameof(coordinates));
+                return null;
             var top = enumerator.Current.latitude;
             var left = enumerator.Current.longitude;
             var bottom = top;

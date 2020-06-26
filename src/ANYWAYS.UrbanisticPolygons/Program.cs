@@ -71,72 +71,72 @@ namespace ANYWAYS.UrbanisticPolygons
             
         }
 
-        private static void HandleStream(XmlOsmStreamSource stream, int z, int x, int y)
-        {
-            var ways = new HashSet<CompleteWay>();
-            var landusePolygons = new HashSet<CompleteWay>();
-            foreach (var geo in stream.ToComplete())
-            {
-                if (!(geo is CompleteWay w) || w.Tags == null) continue;
-
-                if (DefaultMergeFactorCalculator.Barriers.TryCalculateValue(w.Tags, out _))
-                {
-                    ways.Add(w);
-                }
-
-
-                if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(w.Tags, out _))
-                {
-                    landusePolygons.Add(w);
-                }
-            }
-
-            var tile = new Tile(x, y, z);
-            foreach (var w in tile.EdgeWays())
-            {
-                ways.Add(w);
-            }
-
-            ways = ways.SplitAllWays();
-
-
-            var graph = new Graph.Graph(ways, tile)
-                .PruneDeadEnds();
-
-            var polygons = graph.GetPolygons();
-            foreach (var landusePolygon in landusePolygons)
-            {
-                DefaultMergeFactorCalculator.Landuses.TryCalculateValue(landusePolygon.Tags, out var classification);
-                polygons.InfuseLanduse(landusePolygon, classification);
-            }
-
-
-            File.WriteAllText("barriers.geojson", graph.AsGeoJson());
-            Console.WriteLine("File written");
-            File.WriteAllText("polygons.geojson", polygons.Select(p => p.geometry).AsPolygonGeoJson());
-            Console.WriteLine("Done");
-
-
-            var target = polygons.Average(t => t.geometry.Area());
-            Console.WriteLine("Target surface is " + target);
-            var mergeFactor = new DefaultMergeFactorCalculator(target*3.0);
-            var merger = new PolygonMerger(polygons, graph, mergeFactor, 100);
-            var merged = merger.MergePolygons().ToList();
-            merged.ForEach(PostProcess);
-            File.WriteAllText("polygonsMerged.geojson", merged.AsPolygonGeoJson());
-        }
+        // private static void HandleStream(XmlOsmStreamSource stream, int z, int x, int y)
+        // {
+        //     var ways = new HashSet<CompleteWay>();
+        //     var landusePolygons = new HashSet<CompleteWay>();
+        //     foreach (var geo in stream.ToComplete())
+        //     {
+        //         if (!(geo is CompleteWay w) || w.Tags == null) continue;
+        //
+        //         if (DefaultMergeFactorCalculator.Barriers.TryCalculateValue(w.Tags, out _))
+        //         {
+        //             ways.Add(w);
+        //         }
+        //
+        //
+        //         if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(w.Tags, out _))
+        //         {
+        //             landusePolygons.Add(w);
+        //         }
+        //     }
+        //
+        //     var tile = new Tile(x, y, z);
+        //     foreach (var w in tile.EdgeWays())
+        //     {
+        //         ways.Add(w);
+        //     }
+        //
+        //     ways = ways.SplitAllWays();
+        //
+        //
+        //     var graph = new Graph.Graph(ways, tile)
+        //         .PruneDeadEnds();
+        //
+        //     var polygons = graph.GetPolygons();
+        //     foreach (var landusePolygon in landusePolygons)
+        //     {
+        //         DefaultMergeFactorCalculator.Landuses.TryCalculateValue(landusePolygon.Tags, out var classification);
+        //         polygons.InfuseLanduse(landusePolygon, classification);
+        //     }
+        //
+        //
+        //     File.WriteAllText("barriers.geojson", graph.AsGeoJson());
+        //     Console.WriteLine("File written");
+        //     File.WriteAllText("polygons.geojson", polygons.Select(p => p.geometry).AsPolygonGeoJson());
+        //     Console.WriteLine("Done");
+        //
+        //
+        //     var target = polygons.Average(t => t.geometry.Area());
+        //     Console.WriteLine("Target surface is " + target);
+        //     var mergeFactor = new DefaultMergeFactorCalculator(target*3.0);
+        //     var merger = new PolygonMerger(polygons, graph, mergeFactor, 100);
+        //     var merged = merger.MergePolygons().ToList();
+        //     merged.ForEach(PostProcess);
+        //     File.WriteAllText("polygonsMerged.geojson", merged.AsPolygonGeoJson());
+        // }
 
         static void Main(string[] args)
         {
-            var y = 5469;
-            var x = 8338;
-
-            using (var f = File.OpenRead($"data/{x}_{y}.osm"))
-            {
-                var stream = new XmlOsmStreamSource(f);
-
-                HandleStream(stream, 14, x, y);
-            }
+            // var y = 5469;
+            // var x = 8338;
+            //
+            // using (var f = File.OpenRead($"data/{x}_{y}.osm"))
+            // {
+            //     var stream = new XmlOsmStreamSource(f);
+            //
+            //     HandleStream(stream, 14, x, y);
+            // }
         }
     }
 }

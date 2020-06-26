@@ -57,11 +57,13 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                         if (!edgeEnumerator2.MoveTo(v2)) continue;
 
                         var box1 = edgeEnumerator1.CompleteShape().ToBox();
+                        if (box1 == null) continue;
                         while (edgeEnumerator2.MoveNext())
                         {
                             if (!edgeEnumerator2.Forward) continue; // only consider forward directions
                             var box2 = edgeEnumerator2.CompleteShape().ToBox();
-                            if (!box1.Overlaps(box2)) continue;
+                            if (box2 == null) continue;
+                            if (!box1.Value.Overlaps(box2.Value)) continue;
                             
                             // intersect here and use the first result.
                             var intersectionResult = edgeEnumerator1.Intersect(edgeEnumerator2);
@@ -357,7 +359,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             // for every face, determine polygon.
             for (var f = 0; f < graph.FaceCount; f++)
             {
-                var polygon = graph.ToPolygon(f);
+                var polygon = graph.ToPolygonFeature(f);
                 if (polygon == null) continue;
                 
                 yield return polygon;
@@ -371,11 +373,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 var box = TileStatic.Box(graph.Zoom, tile);
                 var polygon = new NetTopologySuite.Geometries.Polygon(new LinearRing(new []
                 {
-                    new Coordinate(box.left, box.top), 
-                    new Coordinate(box.right, box.top), 
-                    new Coordinate(box.right, box.bottom), 
-                    new Coordinate(box.left, box.bottom), 
-                    new Coordinate(box.left, box.top)
+                    new Coordinate(box.topLeft.longitude, box.topLeft.latitude), 
+                    new Coordinate(box.bottomRight.longitude, box.topLeft.latitude), 
+                    new Coordinate(box.bottomRight.longitude, box.bottomRight.latitude), 
+                    new Coordinate(box.topLeft.longitude, box.bottomRight.latitude), 
+                    new Coordinate(box.topLeft.longitude, box.topLeft.latitude)
                 }));
             
                 yield return new Feature(polygon, new AttributesTable{{"tile_id", tile},{"zoom", graph.Zoom}});
