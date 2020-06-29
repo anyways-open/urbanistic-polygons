@@ -65,7 +65,7 @@ namespace ANYWAYS.UrbanisticPolygons
             
             // first load the tile in question.
             var tileData = getTile(tile);
-            graph.AddNonPlanar(tileData, isBarrier);
+            var newEdges = graph.AddNonPlanar(tileData, isBarrier);
             
             // load other tiles until all edges with at least one vertex in the request tile are fully loaded.
             var extraTiles = new HashSet<uint>();
@@ -86,7 +86,7 @@ namespace ANYWAYS.UrbanisticPolygons
             }
             
             // add all the tiles.
-            graph.AddTiles(extraTiles, getTile, isBarrier);
+            graph.AddTiles(extraTiles, getTile, isBarrier, newEdges);
         }
 
         internal static void AddTileFor(this TiledBarrierGraph graph, int vertex, Func<uint, IEnumerable<OsmGeo>> getTile,
@@ -99,10 +99,11 @@ namespace ANYWAYS.UrbanisticPolygons
         
         internal static void AddTiles(this TiledBarrierGraph graph, IEnumerable<uint> tiles,
             Func<uint, IEnumerable<OsmGeo>> getTile,
-            Func<TagsCollectionBase, bool> isBarrier)
+            Func<TagsCollectionBase, bool> isBarrier, IEnumerable<int>? newEdges = null)
         {
             // load other tiles.
-            var newEdges = new HashSet<int>();
+            var newEdgesSet = new HashSet<int>();
+            if (newEdges != null) newEdgesSet.UnionWith(newEdges);
             foreach (var tile in tiles)
             {
                 // mark tile as loaded.
@@ -113,11 +114,11 @@ namespace ANYWAYS.UrbanisticPolygons
                 var extraTileNewEdges = graph.AddNonPlanar(tileData, isBarrier);
                 
                 // keep new edges.
-                newEdges.UnionWith(extraTileNewEdges);
+                newEdgesSet.UnionWith(extraTileNewEdges);
             }
             
             // flatten the graph.
-            graph.Flatten();
+            graph.Flatten(newEdgesSet);
             
             // prune graph.
             graph.PruneDeadEnds();

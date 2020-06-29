@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -71,10 +72,14 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             
             if (way != null) _ways.Add(way.Value);
             
+            var box = new [] { this.GetVertex(vertex1), this.GetVertex(vertex2)}.Concat(shape).ToBox();
+            if (box == null) throw new Exception();
+            
             return _graph.AddEdge(vertex1, vertex2, new BarrierGraphEdge()
             {
                 Shape = shape.ToArray(),
-                Tags = tags
+                Tags = tags,
+                Box = box.Value
             });
         }
 
@@ -129,6 +134,12 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
         private struct BarrierGraphEdge
         {
+            public ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) Box
+            {
+                get;
+                set;
+            }
+            
             public (double longitude, double latitude)[] Shape { get; set; }
         
             public TagsCollectionBase Tags { get; set; }
@@ -170,6 +181,9 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             public bool Forward => _enumerator.Forward;
 
             public (double longitude, double latitude)[] Shape => _enumerator.Data.Shape;
+
+            public ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) Box =>
+                _enumerator.Data.Box;
 
             public TagsCollectionBase Tags => _enumerator.Data.Tags;
         }

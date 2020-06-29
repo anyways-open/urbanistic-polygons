@@ -43,28 +43,26 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             for (var v1 = 0; v1 < graph.VertexCount; v1++)
             {
                 var split = false;
-                for (var v2 = v1 + 1; v2 < graph.VertexCount; v2++)
+                if (!edgeEnumerator1.MoveTo(v1)) continue;
+                while (edgeEnumerator1.MoveNext())
                 {
                     if (split) break;
-                    if (!edgeEnumerator1.MoveTo(v1)) continue;
-
-                    while (edgeEnumerator1.MoveNext())
+                    if (!edgeEnumerator1.Forward) continue; // only consider forward directions
+                    if (edgeToCheck != null && !edgeToCheck.Contains(edgeEnumerator1.Edge)) continue;
+                    
+                    for (var v2 = 0; v2 < graph.VertexCount; v2++)
                     {
                         if (split) break;
-                        if (!edgeEnumerator1.Forward) continue; // only consider forward directions
-                        
-                        if (edgeToCheck != null && !edgeToCheck.Contains(edgeEnumerator1.Edge)) continue;
+
                         if (!edgeEnumerator2.MoveTo(v2)) continue;
 
-                        var box1 = edgeEnumerator1.CompleteShape().ToBox();
-                        if (box1 == null) continue;
+                        var box1 = edgeEnumerator1.Box;
                         while (edgeEnumerator2.MoveNext())
                         {
                             if (!edgeEnumerator2.Forward) continue; // only consider forward directions
-                            var box2 = edgeEnumerator2.CompleteShape().ToBox();
-                            if (box2 == null) continue;
-                            if (!box1.Value.Overlaps(box2.Value)) continue;
-                            
+                            var box2 = edgeEnumerator2.Box;
+                            if (!box1.Overlaps(box2)) continue;
+
                             // intersect here and use the first result.
                             var intersectionResult = edgeEnumerator1.Intersect(edgeEnumerator2);
 
@@ -73,19 +71,19 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                             // - restart at v1.
                             if (intersectionResult == null) continue;
                             var intersection = intersectionResult.Value;
-                            
+
                             // get shapes.
                             var shape11 = edgeEnumerator1.ShapeTo(intersection.shape1);
                             var shape12 = edgeEnumerator1.ShapeFrom(intersection.shape1);
                             var shape21 = edgeEnumerator2.ShapeTo(intersection.shape2);
                             var shape22 = edgeEnumerator2.ShapeFrom(intersection.shape2);
-                            
+
                             // add new vertex.
                             var vertex = graph.AddVertex(intersection.longitude,
                                 intersection.latitude);
-                                
+
                             // add 4 new edges.
-                            
+
                             // edge1 vertex1 -> vertex
                             graph.AddEdge(edgeEnumerator1.Vertex1, vertex, shape11, edgeEnumerator1.Tags);
                             // vertex -> edge1 vertex2
@@ -95,7 +93,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                             graph.AddEdge(edgeEnumerator2.Vertex1, vertex, shape21, edgeEnumerator2.Tags);
                             // vertex -> edge2 vertex2
                             graph.AddEdge(vertex, edgeEnumerator2.Vertex2, shape22, edgeEnumerator2.Tags);
-                            
+
                             // remove original edges.
                             graph.DeleteEdge(edgeEnumerator1.Edge);
                             graph.DeleteEdge(edgeEnumerator2.Edge);

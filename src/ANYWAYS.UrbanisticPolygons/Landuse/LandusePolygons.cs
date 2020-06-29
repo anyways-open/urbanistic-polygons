@@ -10,10 +10,10 @@ using OsmSharp.Tags;
 
 namespace ANYWAYS.UrbanisticPolygons.Landuse
 {
-    internal static class LandusePolygons
+    public static class LandusePolygons
     {
         public static IEnumerable<(Polygon polygon, string landuseType)> GetLandusePolygons(
-            ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
+            ((double lon, double lat) tl, (double lon, double lat) br) box,
             int zoom,
             Func<uint, IEnumerable<OsmGeo>> getTile,
             Func<TagsCollectionBase, string?> getLanduseType)

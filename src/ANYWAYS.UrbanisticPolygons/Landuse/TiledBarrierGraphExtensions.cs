@@ -6,6 +6,7 @@ using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Geometries;
+using OsmSharp.Logging;
 
 namespace ANYWAYS.UrbanisticPolygons.Landuse
 {
@@ -16,6 +17,25 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
             Func<((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight), IEnumerable<(Polygon polygon, string type)>> getLanduse)
         {
             var tileBox = TileStatic.Box(tiledBarrierGraph.Zoom, tile);
+            var largerBox = tileBox;
+            
+            // expand box until we have the total outline.
+            for (var f = 1; f < tiledBarrierGraph.FaceCount; f++)
+            {
+                // determine if face overlaps with tile.
+                var box = tiledBarrierGraph.FaceToClockwiseCoordinates(f).ToBox();
+                if (box == null) continue;
+                if (!box.Value.Overlaps(tileBox)) continue; // face is not in tile.
+
+                // expand the box if needed.
+                if (largerBox.Overlaps(box.Value.bottomRight) &&
+                    largerBox.Overlaps(box.Value.topLeft)) continue;
+                largerBox = largerBox.Expand(box.Value);
+            }
+
+            // get all landuse polygon in the larger box.
+            var landuse = getLanduse(largerBox).ToList();
+            
             for (var f = 1; f < tiledBarrierGraph.FaceCount; f++)
             {
                 // determine if face overlaps with tile.
@@ -31,18 +51,17 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
                 var attributes = new LanduseAttributes();
                 
                 // get all the polygons for all tiles for the current face.
-                var landuse = getLanduse(box.Value);
                 foreach (var (polygon, type) in landuse)
                 {
                     var percentage = 0.0;
-                    if (polygon.Overlaps(facePolygon))
+                    try
                     {
-                        // landuse completely overlaps the polygon, add it as 100%
-                        percentage = 1;
-                    }
-                    else
-                    {
-                        try
+                        if (polygon.Overlaps(facePolygon))
+                        {
+                            // landuse completely overlaps the polygon, add it as 100%
+                            percentage = 1;
+                        }
+                        else
                         {
                             var intersection = facePolygon.Intersection(polygon);
                             if (intersection == null || intersection.IsEmpty) continue;
@@ -52,16 +71,18 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
                                 percentage = intersectionPolygon.Area / facePolygon.Area;
                             }
                         }
-                        catch (Exception e)
-                        {
-                            // TODO: non-noded intersections, due to invalid polygons?
-                        }
                     }
-                    
+                    catch (Exception e)
+                    {
+                        // TODO: non-noded intersections, due to invalid polygons?
+                        OsmSharp.Logging.Logger.Log(nameof(TiledBarrierGraphBuilder), TraceEventType.Warning,
+                            $"Unhandled exception calculating intersections.");
+                    }
+
                     // update attributes.
                     attributes = attributes.Set(type, percentage);
                 }
-                
+
                 // set face data.
                 tiledBarrierGraph.SetFaceData(f, attributes);
             }

@@ -16,12 +16,10 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
         /// </summary>
         /// <param name="url">The url.</param>
         /// <returns>An open stream for the content at the given url.</returns>
-        public static Stream? Download(string url)
+        public static Stream? Download(string url, string cache = "/media/xivk/2T-SSD-EXT/temp")
         {
             var fileName = HttpUtility.UrlEncode(url) + ".tile.zip";
-            fileName = Path.Combine(".", "cache", fileName);
-
-            if (!Directory.Exists("cache")) Directory.CreateDirectory("cache");
+            fileName = Path.Combine(cache, fileName);
 
             if (File.Exists(fileName))
             {
@@ -29,7 +27,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
             }
             
             var redirectFileName = HttpUtility.UrlEncode(url) + ".tile.redirect";
-            redirectFileName = Path.Combine(".", "cache", redirectFileName);
+            redirectFileName = Path.Combine(cache, redirectFileName);
 
             if (File.Exists(redirectFileName))
             {
@@ -65,7 +63,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
                     }
                 }
 
-                var temp = $"{Guid.NewGuid()}.temp";
+                var temp = Path.Combine(cache, $"{Guid.NewGuid()}.temp");
                 using (var stream = response.GetAwaiter().GetResult().Content.ReadAsStreamAsync().GetAwaiter()
                     .GetResult())
                 using (var fileStream = File.Open(temp, FileMode.Create))

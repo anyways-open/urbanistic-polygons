@@ -6,6 +6,7 @@ using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
+using OsmSharp.Logging;
 
 [assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests.Functional")]
 namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
@@ -78,7 +79,12 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 }
 
                 path.Add((first.Vertex1, first.Edge, first.Forward, first.Vertex2));
-                if (edges.Contains((first.Edge, first.Forward))) throw new Exception("Edge visited twice in same direction!"); 
+                if (edges.Contains((first.Edge, first.Forward)))
+                {
+                    OsmSharp.Logging.Logger.Log(nameof(TiledBarrierGraphBuilder), TraceEventType.Warning,
+                        $"Edge visited twice in same direction!");
+                    return (null, Enumerable.Empty<uint>());
+                } 
                 edges.Add((first.Edge, first.Forward));
 
                 if (first.Vertex2 == path[0].v1) break;

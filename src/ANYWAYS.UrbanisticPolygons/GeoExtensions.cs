@@ -531,6 +531,23 @@ namespace ANYWAYS.UrbanisticPolygons
 //         }
 //
 
+        public static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)
+            Expand(this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
+                ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) other)
+        {
+            var left = box.topLeft.longitude;
+            var top = box.topLeft.latitude;
+            var right = box.bottomRight.longitude;
+            var bottom = box.bottomRight.latitude;
+
+            if (left > other.topLeft.longitude) left = other.topLeft.longitude;
+            if (right < other.bottomRight.longitude) right = other.bottomRight.longitude;
+            if (top < other.topLeft.latitude) top = other.topLeft.latitude;
+            if (bottom < other.bottomRight.latitude) bottom = other.bottomRight.latitude;
+
+            return ((left, top), (right, bottom));
+        }
+
         public static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)?
             ToBox(this IEnumerable<(double longitude, double latitude)> coordinates)
         {
@@ -566,11 +583,19 @@ namespace ANYWAYS.UrbanisticPolygons
             this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
             ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) other)
         {
-            if (box.topLeft.longitude > other.bottomRight.longitude) return false;            
-            if (box.topLeft.latitude < other.bottomRight.latitude) return false;
-            if (box.bottomRight.longitude < other.topLeft.longitude) return false;
-            if (box.bottomRight.latitude > other.topLeft.latitude) return false;
-
+            var e = 0.00000001;
+            var diff = box.topLeft.longitude - other.bottomRight.longitude;
+            if (diff > e) return false;
+            diff = other.bottomRight.latitude - box.topLeft.latitude;
+            //if (box.topLeft.latitude <= other.bottomRight.latitude) return false;
+            if (diff > e) return false;
+            diff = other.topLeft.longitude - box.bottomRight.longitude;
+            //if (box.bottomRight.longitude <= other.topLeft.longitude) return false;
+            if (diff > e) return false;
+            //if (box.bottomRight.latitude >= other.topLeft.latitude) return false;
+            diff = box.bottomRight.latitude - other.topLeft.latitude;
+            if (diff > e) return false;
+            
             return true;
         }
     }
