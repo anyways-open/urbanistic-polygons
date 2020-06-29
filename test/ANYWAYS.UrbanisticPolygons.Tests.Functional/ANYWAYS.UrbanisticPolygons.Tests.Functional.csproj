@@ -12,5 +12,8 @@
   <ItemGroup>
     <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="cache" />
+  </ItemGroup>
 
 </Project>

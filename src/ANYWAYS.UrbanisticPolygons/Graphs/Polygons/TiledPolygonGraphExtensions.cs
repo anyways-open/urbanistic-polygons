@@ -182,6 +182,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                 coordinates.Add(new Coordinate(cLocation.longitude, cLocation.latitude));
             }
 
+            if (coordinates.Count < 3) return null;
+            
             var attributes = new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}};
             var faceAttributes = graph.GetFaceData(face);
             foreach (var (type, per) in faceAttributes)

@@ -22,7 +22,7 @@ namespace ANYWAYS.UrbanisticPolygons
             Func<TagsCollectionBase, bool> isBarrier)
         {
             var file = Path.Combine(folder, $"{tile}.tile.graph.zip");
-            //if (File.Exists(file)) return;
+            if (File.Exists(file)) return;
             
             // load data for tile.
             var graph = new TiledBarrierGraph();
@@ -229,6 +229,12 @@ namespace ANYWAYS.UrbanisticPolygons
                         {
                             shape.Add(nodeLocation.Value);
                         }
+                        continue;
+                    }
+                    else if (vertex == int.MaxValue)
+                    {
+                        OsmSharp.Logging.Logger.Log(nameof(TiledBarrierGraphBuilder), TraceEventType.Warning,
+                            $"Node {node} in way {way.Id} not found in tile!");
                         continue;
                     }
 

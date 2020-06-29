@@ -1,4 +1,4 @@
-# coherent-polygons
+# Urbanistic Polygons
 
 Tries to merge similar areas of OSM for analysis reasons.
 
@@ -14,5 +14,7 @@ The algorithm works in three steps:
   - `rural`
   - `industrial`
 3. Merge polygons based on their similarities and the type of barrier between them.
+
+
 
 

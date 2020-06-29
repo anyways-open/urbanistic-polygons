@@ -56,16 +56,16 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             }
             
             TiledBarrierGraphBuilder.BuildForTile(tile1, "cache", GetTile, IsBarrier);
-            //TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
+            TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
             
             var polygonGraph = new TiledPolygonGraph();
             polygonGraph.AddTileFromStream(tile1,
                 new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile1}.tile.graph.zip")),
                     CompressionMode.Decompress));
-            // polygonGraph.AddTileFromStream(tile2,
-            //     new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile2}.tile.graph.zip")),
-            //         CompressionMode.Decompress));
-            //
+            polygonGraph.AddTileFromStream(tile2,
+                 new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile2}.tile.graph.zip")),
+                     CompressionMode.Decompress));
+            
             File.WriteAllText("barriers.geojson", polygonGraph.ToFeatures().ToFeatureCollection().ToGeoJson());
         }
     }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ANYWAYS.UrbanisticPolygons.Tiles
 {
-    internal static class TileStatic
+    public static class TileStatic
     {
         public static (uint x, uint y) ToTile(int zoom, uint tileId)
         {
