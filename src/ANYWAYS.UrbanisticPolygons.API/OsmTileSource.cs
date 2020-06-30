@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -6,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Web;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using OsmSharp;
@@ -16,24 +18,51 @@ namespace ANYWAYS.UrbanisticPolygons.API
 {
     internal static class OsmTileSource
     {
+        private static readonly object Lock = new object();
+        private static readonly ConcurrentDictionary<uint, uint> _tiles = new ConcurrentDictionary<uint, uint>();
+        
         internal static IEnumerable<OsmGeo> GetTile(uint t)
         {
-            var z = 14;
-            var (x, y) = TileStatic.ToTile(z, t);
-            var tileUrl = Startup.TileUrl.Replace("{x}", x.ToString())
-                .Replace("{y}", y.ToString())
-                .Replace("{z}", z.ToString());
-            var stream = Download(tileUrl);
-            if (stream == null) return Enumerable.Empty<OsmGeo>();
+            // wait until tile is removed from queue.
+            while (true)
+            {
+                lock (Lock)
+                {
+                    if (_tiles.ContainsKey(t))
+                    {
+                        Thread.Sleep(200);
+                    }
+                    else
+                    {
+                        _tiles[t] = t;
+                        break;
+                    }
+                }
+            }
 
             try
             {
-                return (new XmlOsmStreamSource(stream)).ToList();
+                var z = 14;
+                var (x, y) = TileStatic.ToTile(z, t);
+                var tileUrl = Startup.TileUrl.Replace("{x}", x.ToString())
+                    .Replace("{y}", y.ToString())
+                    .Replace("{z}", z.ToString());
+                var stream = Download(tileUrl);
+                if (stream == null) return Enumerable.Empty<OsmGeo>();
+
+                try
+                {
+                    return (new XmlOsmStreamSource(stream)).ToList();
+                }
+                catch (Exception e)
+                {
+                    Log.Warning($"Failed to parse tile: {14}{x}/{y}");
+                    return Enumerable.Empty<OsmGeo>();
+                }
             }
-            catch (Exception e)
+            finally
             {
-                Log.Warning($"Failed to parse tile: {14}{x}/{y}");
-                return Enumerable.Empty<OsmGeo>();
+                _tiles.Remove(t, out _);
             }
         }
 

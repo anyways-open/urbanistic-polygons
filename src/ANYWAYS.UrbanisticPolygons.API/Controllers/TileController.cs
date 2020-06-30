@@ -49,8 +49,8 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
         {
             var mvt = new VectorTileSource
             {
-                maxzoom = 20,
-                minzoom = 6,
+                maxzoom = 14,
+                minzoom = 14,
                 attribution = "ANYWAYS BV",
                 basename = "urban-polygons",
                 id = "urban-polygons",
@@ -60,8 +60,8 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
                     {
                         description = "Urban Polygons",
                         id = "urban-polygons",
-                        maxzoom = 20,
-                        minzoom = 6
+                        maxzoom = 14,
+                        minzoom = 14
                     }
                 }
             };
@@ -74,8 +74,10 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
         }
 
         [HttpGet("{z}/{x}/{y}.mvt")]
-        public FileStreamResult GetMvt(int z, uint x, uint y)
+        public IActionResult GetMvt(int z, uint x, uint y)
         {
+            if (z != 14) return NotFound();
+            
             var tile = TileStatic.ToLocalId(x, y, z);
 
             try
@@ -86,7 +88,35 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
                 var layer = new Layer {Name = "urban-polygons"};
                 foreach (var loc in polygons)
                 {
-                    layer.Features.Add(loc);
+                    var max = double.MinValue;
+                    var maxType = string.Empty;
+                    
+                    var names = loc.Attributes.GetNames();
+                    var values = loc.Attributes.GetValues();
+                    var attributes = new AttributesTable();
+                    for (var a = 0; a < names.Length; a++)
+                    {
+                        attributes.Add(names[a], values[a]);
+                        
+                        var name = names[a];
+                        if (name.StartsWith("face")) continue;
+
+                        var o = values[a];
+                        var d = o is IConvertible convertible ? convertible.ToDouble(null) : 0d;
+
+                        if (d > max)
+                        {
+                            max = d;
+                            maxType = name;
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(maxType))
+                    {
+                        attributes.Add("type", maxType);
+                    }
+                    
+                    layer.Features.Add(new Feature(loc.Geometry, attributes));
                 }
 
                 var vectorTile = new VectorTile

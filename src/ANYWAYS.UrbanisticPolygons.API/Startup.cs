@@ -30,6 +30,16 @@ namespace ANYWAYS.UrbanisticPolygons.API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors(options =>
+            {
+                options.AddPolicy(name: "CorsPolicy",
+                    builder =>
+                    {
+                        builder.AllowAnyOrigin().AllowAnyMethod();
+                    });
+            });
+
+            
             services.AddControllers(settings =>
             {
                 // settings.RespectBrowserAcceptHeader = true;
@@ -50,6 +60,8 @@ namespace ANYWAYS.UrbanisticPolygons.API
             app.UseHttpsRedirection();
 
             app.UseRouting();
+            
+            app.UseCors("CorsPolicy");
 
             app.UseAuthorization();
 

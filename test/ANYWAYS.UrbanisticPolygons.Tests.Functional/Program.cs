@@ -59,24 +59,24 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
                 return DefaultMergeFactorCalculator.Barriers.TryCalculateValue(tags, out _);
             }
 
-            var tile = 89579736U;
+            var tile = TileStatic.ToLocalId(8411,5466, 14);
             
-            // // load data for tile.
-            // var graph = new TiledBarrierGraph();
-            // graph.LoadForTile(tile, GetTile, IsBarrier);
-            //
-            // // run face assignment for the tile.
-            // var result =  graph.AssignFaces(tile);
-            // while (!result.success)
-            // {
-            //     // extra tiles need loading.-
-            //     graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
-            //     
-            //     // try again.
-            //     result =  graph.AssignFaces(tile);
-            // }
-            //
-            // File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
+            // load data for tile.
+            var graph = new TiledBarrierGraph();
+            graph.LoadForTile(tile, GetTile, IsBarrier);
+            
+            // run face assignment for the tile.
+            var result =  graph.AssignFaces(tile);
+            while (!result.success)
+            {
+                // extra tiles need loading.-
+                graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
+                
+                // try again.
+                result =  graph.AssignFaces(tile);
+            }
+            
+            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
             
             //
             // var landuse = NTSExtensions.FromGeoJson(File.ReadAllText("test.geojson"));

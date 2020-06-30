@@ -37,9 +37,6 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
             // get all landuse polygon in the larger box.
             var landuse = getLanduse(largerBox).ToList();
             
-            var landusePolygons = landuse.Select(p => new Feature(p.polygon, new AttributesTable{{"type", p.type}}));
-            var geojson = landusePolygons.ToFeatureCollection().ToGeoJson();
-            
             for (var f = 1; f < tiledBarrierGraph.FaceCount; f++)
             {
                 // determine if face overlaps with tile.
