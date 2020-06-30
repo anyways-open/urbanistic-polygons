@@ -17,5 +17,11 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
         {
             return (new GeoJsonWriter()).Write(featureCollection);
         }
+
+        public static FeatureCollection FromGeoJson(this string geojson)
+        {
+            var reader = new GeoJsonReader();
+            return reader.Read<FeatureCollection>(geojson);
+        }
     }
 }

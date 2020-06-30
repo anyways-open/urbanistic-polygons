@@ -15,5 +15,10 @@
   <ItemGroup>
     <Folder Include="cache" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="test.geojson">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>

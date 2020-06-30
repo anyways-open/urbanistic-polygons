@@ -543,7 +543,7 @@ namespace ANYWAYS.UrbanisticPolygons
             if (left > other.topLeft.longitude) left = other.topLeft.longitude;
             if (right < other.bottomRight.longitude) right = other.bottomRight.longitude;
             if (top < other.topLeft.latitude) top = other.topLeft.latitude;
-            if (bottom < other.bottomRight.latitude) bottom = other.bottomRight.latitude;
+            if (bottom > other.bottomRight.latitude) bottom = other.bottomRight.latitude;
 
             return ((left, top), (right, bottom));
         }

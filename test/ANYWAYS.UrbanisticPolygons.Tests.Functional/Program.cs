@@ -11,6 +11,7 @@ using ANYWAYS.UrbanisticPolygons.Landuse;
 using ANYWAYS.UrbanisticPolygons.Tests.Functional.Download;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
+using NetTopologySuite.Geometries;
 using OsmSharp;
 using OsmSharp.Streams;
 using OsmSharp.Tags;
@@ -22,10 +23,13 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
     {
         static void Main(string[] args)
         {
+            var cacheFolder = "/media/xivk/2T-SSD-EXT/temp";
+            
             IEnumerable<OsmGeo> GetTile(uint t)
             {
                 var (x, y) = TileStatic.ToTile(14, t);
-                var stream = DownloadHelper.Download($"https://data1.anyways.eu/tiles/full/20200628-150902/{14}/{x}/{y}.osm");
+                var stream = DownloadHelper.Download($"https://data1.anyways.eu/tiles/full/20200628-150902/{14}/{x}/{y}.osm",
+                    cacheFolder);
                 if (stream == null) return Enumerable.Empty<OsmGeo>();
 
                 try
@@ -57,34 +61,46 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
 
             var tile = 89579736U;
             
-            // load data for tile.
-            var graph = new TiledBarrierGraph();
-            graph.LoadForTile(tile, GetTile, IsBarrier);
-            
-            // run face assignment for the tile.
-            var result =  graph.AssignFaces(tile);
-            while (!result.success)
-            {
-                // extra tiles need loading.-
-                graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
-                
-                // try again.
-                result =  graph.AssignFaces(tile);
-            }
-            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
-            
-            // TiledBarrierGraphBuilder.BuildForTile(tile1, "cache", GetTile, IsBarrier);
-            // TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
+            // // load data for tile.
+            // var graph = new TiledBarrierGraph();
+            // graph.LoadForTile(tile, GetTile, IsBarrier);
             //
-            // var polygonGraph = new TiledPolygonGraph();
-            // polygonGraph.AddTileFromStream(tile1,
-            //     new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile1}.tile.graph.zip")),
-            //         CompressionMode.Decompress));
+            // // run face assignment for the tile.
+            // var result =  graph.AssignFaces(tile);
+            // while (!result.success)
+            // {
+            //     // extra tiles need loading.-
+            //     graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
+            //     
+            //     // try again.
+            //     result =  graph.AssignFaces(tile);
+            // }
+            //
+            // File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
+            
+            //
+            // var landuse = NTSExtensions.FromGeoJson(File.ReadAllText("test.geojson"));
+            //
+            // IEnumerable<(Polygon polygon, string type)> GetLanduse(((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+            // {
+            //     return new (Polygon polygon, string type)[] { (landuse.First().Geometry as Polygon, "residential") };
+            // }
+            // graph.AssignLanduse(tile, GetLanduse);          
+            // // File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
+
+            
+            TiledBarrierGraphBuilder.BuildForTile(tile, cacheFolder, GetTile, IsBarrier);
+            //TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
+            
+            var polygonGraph = new TiledPolygonGraph();
+            polygonGraph.AddTileFromStream(tile,
+                new GZipStream(File.OpenRead(Path.Combine(cacheFolder, $"{tile1}.tile.graph.zip")),
+                    CompressionMode.Decompress));
             // polygonGraph.AddTileFromStream(tile2,
             //      new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile2}.tile.graph.zip")),
             //          CompressionMode.Decompress));
-            //
-            // File.WriteAllText("barriers.geojson", polygonGraph.ToFeatures().ToFeatureCollection().ToGeoJson());
+            
+            File.WriteAllText("barriers.geojson", polygonGraph.ToFeatures().ToFeatureCollection().ToGeoJson());
         }
     }
 }

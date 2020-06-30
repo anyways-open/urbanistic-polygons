@@ -14,6 +14,13 @@ namespace ANYWAYS.UrbanisticPolygons
                 featureCollection.Add(feature);
             }
         }
+        
+        public static FeatureCollection ToFeatureCollection(this IEnumerable<Feature> features)
+        {
+            var c = new FeatureCollection();
+            c.AddRange(features);
+            return c;
+        }
 
         public static string ToGeoJson(this FeatureCollection features)
         {

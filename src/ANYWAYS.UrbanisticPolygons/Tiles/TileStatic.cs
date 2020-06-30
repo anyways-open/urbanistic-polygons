@@ -129,10 +129,10 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
             int zoom)
         {
             var topLeft = TileStatic.WorldToTile(box.topLeft.longitude, box.topLeft.latitude, zoom);
-            var bottomRight = TileStatic.WorldToTile(box.topLeft.longitude, box.topLeft.latitude, zoom);
+            var bottomRight = TileStatic.WorldToTile(box.bottomRight.longitude, box.bottomRight.latitude, zoom);
             
             for (var x = topLeft.x; x <= bottomRight.x; x++)
-            for (var y = topLeft.y; y <= topLeft.y; y++)
+            for (var y = topLeft.y; y <= bottomRight.y; y++)
             {
                 yield return (x, y);
             }
