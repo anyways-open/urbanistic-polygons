@@ -72,9 +72,9 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier.Faces
         
             using var clockwise = enumerator.NextClockwise().GetEnumerator();
             Assert.True(clockwise.MoveNext());
-            Assert.Equal(v3, clockwise.Current.Vertex2);
-            Assert.True(clockwise.MoveNext());
             Assert.Equal(v4, clockwise.Current.Vertex2);
+            Assert.True(clockwise.MoveNext());
+            Assert.Equal(v3, clockwise.Current.Vertex2);
             Assert.False(clockwise.MoveNext());
         }
     }

@@ -17,7 +17,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier.Faces
         }
 
         [Fact]
-        public void Faces_AssignFaces_OneEdge_ShouldDoNothing()
+        public void Faces_AssignFaces_OneEdge_ShouldAssign1()
         {
             var graphs = new TiledBarrierGraph();
             
@@ -29,7 +29,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier.Faces
             
             graphs.AssignFaces(tile);
 
-            Assert.Equal(0, graphs.FaceCount);
+            Assert.Equal(1, graphs.FaceCount);
         }
         
         [Fact]
@@ -138,7 +138,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier.Faces
             
             graphs.AssignFaces(Tiles.TileStatic.WorldTileLocalId(graphs.GetVertex(v1), 14));
 
-            Assert.Equal(2, graphs.FaceCount);
+            Assert.Equal(3, graphs.FaceCount);
             var enumerator = graphs.GetEnumerator();
             enumerator.MoveTo(v1);
             enumerator.MoveNextUntil(e1);
@@ -186,7 +186,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Graphs.Barrier.Faces
             
             graphs.AssignFaces(Tiles.TileStatic.WorldTileLocalId(graphs.GetVertex(v1), 14));
 
-            Assert.Equal(2, graphs.FaceCount);
+            Assert.Equal(3, graphs.FaceCount);
             var enumerator = graphs.GetEnumerator();
             enumerator.MoveTo(v1);
             enumerator.MoveNextUntil(e1);
