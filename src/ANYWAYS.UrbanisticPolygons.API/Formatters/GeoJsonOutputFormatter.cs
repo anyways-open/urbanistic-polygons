@@ -56,6 +56,13 @@ namespace ANYWAYS.UrbanisticPolygons.API.Formatters
                     features.Add(f);
                 }
             }
+            else if (context.Object is IAsyncEnumerable<Feature> afs)
+            {
+                await foreach (var f in afs)
+                {
+                    features.Add(f);
+                }
+            }
             else
             {
                 throw new ArgumentException("Cannot write response body for the given type.");

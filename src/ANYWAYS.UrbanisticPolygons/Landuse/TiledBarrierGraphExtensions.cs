@@ -57,6 +57,8 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
                     var percentage = 0.0;
                     try
                     {
+                        if (!polygon.Envelope.Overlaps(facePolygon.Envelope)) continue;
+                        
                         if (polygon.Covers(facePolygon))
                         {
                             // landuse completely overlaps the polygon, add it as 100%

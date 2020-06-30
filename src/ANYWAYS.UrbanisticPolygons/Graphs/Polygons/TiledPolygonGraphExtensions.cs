@@ -152,7 +152,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
 
             foreach (var polygon in graph.GetAllPolygons())
             {
-                yield return polygon;
+                yield return polygon.feature;
             }
             
             foreach (var tileFeature in graph.ToTileFeatures())
@@ -161,7 +161,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
             }
         }
         
-        internal static IEnumerable<Feature> GetAllPolygons(this TiledPolygonGraph graph)
+        internal static IEnumerable<(Feature feature, Guid id)> GetAllPolygons(this TiledPolygonGraph graph)
         {
             // for every face, determine polygon.
             for (var f = 1; f < graph.FaceCount; f++)
@@ -169,11 +169,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                 var polygon = graph.ToPolygon(f);
                 if (polygon == null) continue;
                 
-                yield return polygon;
+                yield return polygon.Value;
             }
         }
 
-        public static Feature? ToPolygon(this TiledPolygonGraph graph, int face)
+        public static (Feature feature, Guid id)? ToPolygon(this TiledPolygonGraph graph, int face)
         {
             var coordinates = new List<Coordinate>();
             foreach (var c in graph.FaceToClockwiseCoordinates(face))
@@ -183,16 +183,17 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
             }
 
             if (coordinates.Count < 3) return null;
-            
-            var attributes = new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}};
+
+            var faceGuid = graph.GetFaceGuid(face);
+            var attributes = new AttributesTable {{"face", face}, {"face_guid", faceGuid}};
             var faceAttributes = graph.GetFaceData(face);
             foreach (var (type, per) in faceAttributes)
             {
                 attributes.Add(type, per);
             }
             
-            return new Feature(new NetTopologySuite.Geometries.Polygon(new LinearRing(coordinates.ToArray())), 
-                attributes);
+            return (new Feature(new NetTopologySuite.Geometries.Polygon(new LinearRing(coordinates.ToArray())), 
+                attributes), faceGuid);
         }
 
         public static IEnumerable<(int x, int y, uint tileId)> FaceToClockwiseCoordinates(

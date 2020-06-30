@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using OsmSharp;
 using OsmSharp.Tags;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
@@ -18,44 +21,69 @@ namespace ANYWAYS.UrbanisticPolygons
 {
     internal static class TiledBarrierGraphBuilder
     {
-        internal static void BuildForTile(uint tile, string folder, Func<uint, IEnumerable<OsmGeo>> getTile,
+        private static readonly ConcurrentDictionary<uint, uint> _tiles = new ConcurrentDictionary<uint, uint>();
+
+        internal static async Task BuildForTile(uint tile, string folder, Func<uint, IEnumerable<OsmGeo>> getTile,
             Func<TagsCollectionBase, bool> isBarrier)
         {
-            var file = Path.Combine(folder, $"{tile}.tile.graph.zip");
-            if (File.Exists(file)) return;
-            
-            // load data for tile.
-            var graph = new TiledBarrierGraph();
-            graph.LoadForTile(tile, getTile, isBarrier);
-            
-            // run face assignment for the tile.
-            var result =  graph.AssignFaces(tile);
-            while (!result.success)
+            // wait until tile is removed from queue.
+            while (true)
             {
-                // extra tiles need loading.-
-                graph.AddTiles(result.missingTiles, getTile, isBarrier);
-                
-                // try again.
-                result =  graph.AssignFaces(tile);
-            }
-            
-            // assign landuse.
-            IEnumerable<(Polygon polygon, string type)> GetLanduse(((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
-            {
-                return LandusePolygons.GetLandusePolygons(box, graph.Zoom, getTile, t =>
+                if (_tiles.ContainsKey(tile))
                 {
-                    if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
-
-                    return null;
-                });
+                    await Task.Delay(200);
+                }
+                else
+                {
+                    _tiles[tile] = tile;
+                    break;
+                }
             }
-            graph.AssignLanduse(tile, GetLanduse);            
             
-            using var stream = File.Open(file, FileMode.Create);
-            using var compressedStream = new GZipStream(stream, CompressionLevel.Fastest);
-            graph.WriteTileTo(compressedStream, tile);
+            try
+            {
+                var file = Path.Combine(folder, $"{tile}.tile.graph.zip");
+                if (File.Exists(file)) return;
+
+                // load data for tile.
+                var graph = new TiledBarrierGraph();
+                graph.LoadForTile(tile, getTile, isBarrier);
+
+                // run face assignment for the tile.
+                var result = graph.AssignFaces(tile);
+                while (!result.success)
+                {
+                    // extra tiles need loading.-
+                    graph.AddTiles(result.missingTiles, getTile, isBarrier);
+
+                    // try again.
+                    result = graph.AssignFaces(tile);
+                }
+
+                // assign landuse.
+                IEnumerable<(Polygon polygon, string type)> GetLanduse(
+                    ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+                {
+                    return LandusePolygons.GetLandusePolygons(box, graph.Zoom, getTile, t =>
+                    {
+                        if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
+
+                        return null;
+                    });
+                }
+
+                graph.AssignLanduse(tile, GetLanduse);
+
+                await using var stream = File.Open(file, FileMode.Create);
+                await using var compressedStream = new GZipStream(stream, CompressionLevel.Fastest);
+                graph.WriteTileTo(compressedStream, tile);
+            }
+            finally
+            {
+                _tiles.Remove(tile, out _);
+            }
         }
-        
+
         internal static void LoadForTile(this TiledBarrierGraph graph, uint tile,
             Func<uint, IEnumerable<OsmGeo>> getTile,
             Func<TagsCollectionBase, bool> isBarrier)

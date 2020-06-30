@@ -31,11 +31,9 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
         }
 
         [HttpGet("{z}/{x}/{y}")]
-        public IEnumerable<Feature> Get(int z, uint x, uint y)
+        public IAsyncEnumerable<Feature> Get(int z, uint x, uint y)
         {
-            var tile = TileStatic.ToLocalId(x, y, z);
-
-            return TiledPolygonGraphBuilder.GetPolygonsForTile(tile, Startup.CachePath, OsmTileSource.GetTile,
+            return TiledPolygonGraphBuilder.GetPolygonsForTile((x, y, z), Startup.CachePath, OsmTileSource.GetTile,
                 IsBarrier);
         }
 
@@ -50,7 +48,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             var mvt = new VectorTileSource
             {
                 maxzoom = 14,
-                minzoom = 14,
+                minzoom = 11,
                 attribution = "ANYWAYS BV",
                 basename = "urban-polygons",
                 id = "urban-polygons",
@@ -61,7 +59,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
                         description = "Urban Polygons",
                         id = "urban-polygons",
                         maxzoom = 14,
-                        minzoom = 14
+                        minzoom = 11
                     }
                 }
             };
@@ -74,19 +72,17 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
         }
 
         [HttpGet("{z}/{x}/{y}.mvt")]
-        public IActionResult GetMvt(int z, uint x, uint y)
+        public async Task<IActionResult> GetMvt(int z, uint x, uint y)
         {
-            if (z != 14) return NotFound();
+            if (z < 11) return NotFound();
             
-            var tile = TileStatic.ToLocalId(x, y, z);
-
             try
             {
-                var polygons = TiledPolygonGraphBuilder.GetPolygonsForTile(tile, Startup.CachePath, OsmTileSource.GetTile,
+                var polygons = TiledPolygonGraphBuilder.GetPolygonsForTile((x, y, z), Startup.CachePath, OsmTileSource.GetTile,
                     IsBarrier);
 
                 var layer = new Layer {Name = "urban-polygons"};
-                foreach (var loc in polygons)
+                await foreach (var loc in polygons)
                 {
                     var max = double.MinValue;
                     var maxType = string.Empty;

@@ -137,5 +137,37 @@ namespace ANYWAYS.UrbanisticPolygons.Tiles
                 yield return (x, y);
             }
         }
+
+        public static IEnumerable<(uint x, uint y)> SubTilesFor(this (uint x, uint y, int zoom) tile, int zoom)
+        {
+            if (zoom - tile.zoom == 1)
+            {
+                foreach (var t in SubTilesFor(tile))
+                {
+                    yield return t;
+                }
+            }
+            else
+            {
+                foreach (var (x, y) in SubTilesFor(tile))
+                {
+                    foreach (var t in (x, y, tile.zoom + 1).SubTilesFor(zoom))
+                    {
+                        yield return t;
+                    }
+                }
+            }
+        }
+
+        public static IEnumerable<(uint x, uint y)> SubTilesFor(this (uint x, uint y, int zoom) tile)
+        {
+            var x = tile.x * 2;
+            var y = tile.y * 2;
+
+            yield return (x + 0, y + 0);
+            yield return (x + 1, y + 0);
+            yield return (x + 0, y + 1);
+            yield return (x + 1, y + 1);
+        }
     }
 }
