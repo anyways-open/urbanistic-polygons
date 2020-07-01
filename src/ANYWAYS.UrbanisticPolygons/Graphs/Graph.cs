@@ -24,6 +24,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
             return _vertices[vertex].vertex;
         }
 
+        public void SetVertex(int vertex, TVertexData data)
+        {
+            _vertices[vertex] = (data, _vertices[vertex].pointer);
+        }
+
         public int VertexCount => _vertices.Count;
 
         public int FaceCount => _faces.Count;
@@ -191,6 +196,20 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
 
                 _vertex = vertex;
                 _nextEdge = _graph._vertices[_vertex].pointer;
+                return true;
+            }
+
+            public bool MoveToEdge(int edgeId)
+            {
+                if (_graph._edges.Count <= edgeId) return false;
+
+                var edge = _graph._edges[edgeId];
+                this.Edge = edgeId;
+                
+                _nextEdge = edge.nextEdge1;
+                _forward = true;
+                _edge = (edge.edge, edge.vertex1, edge.vertex2, edge.left, edge.right);
+
                 return true;
             }
 

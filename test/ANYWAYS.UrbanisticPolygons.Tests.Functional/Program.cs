@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Data;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization;
 using ANYWAYS.UrbanisticPolygons.Graphs.Polygons;
 using ANYWAYS.UrbanisticPolygons.Landuse;
-using ANYWAYS.UrbanisticPolygons.Tests.Functional.Download;
+using ANYWAYS.UrbanisticPolygons.Tests.Functional.Tests;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
@@ -16,6 +17,7 @@ using OsmSharp;
 using OsmSharp.Streams;
 using OsmSharp.Tags;
 using Serilog;
+using Serilog.Formatting.Json;
 
 namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
 {
@@ -23,24 +25,28 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
     {
         static void Main(string[] args)
         {
-            var cacheFolder = "/media/xivk/2T-SSD-EXT/temp";
+            var logFile = Path.Combine("logs", "log-{Date}.txt");
+            Log.Logger = new LoggerConfiguration()
+#if DEBUG
+                .MinimumLevel.Debug()
+#else
+                .MinimumLevel.Information()
+#endif
+                .Enrich.FromLogContext()
+                .WriteTo.RollingFile(new JsonFormatter(), logFile)
+                .WriteTo.Console()
+                .CreateLogger();
             
-            IEnumerable<OsmGeo> GetTile(uint t)
-            {
-                var (x, y) = TileStatic.ToTile(14, t);
-                var stream = DownloadHelper.Download($"https://data1.anyways.eu/tiles/full/20200628-150902/{14}/{x}/{y}.osm",
-                    cacheFolder);
-                if (stream == null) return Enumerable.Empty<OsmGeo>();
+            var cacheFolder = "/media/xivk/2T-SSD-EXT/temp";
+            var tileUrl = "https://data1.anyways.eu/tiles/full/20200628-150902/14/{x}/{y}.osm";
+            
+            var osmTileSource = new OsmTileSource(tileUrl, cacheFolder);
 
-                try
-                {
-                    return (new XmlOsmStreamSource(stream)).ToList();
-                }
-                catch (Exception e)
-                {
-                    Log.Warning($"Failed to parse tile: {14}{x}/{y}");
-                    return Enumerable.Empty<OsmGeo>();
-                }
+            bool IsBarrier(TagsCollectionBase? tags)
+            {
+                if (tags == null) return false;
+
+                return DefaultMergeFactorCalculator.Barriers.TryCalculateValue(tags, out _);
             }
 
             var wechelderzande1 = (4.801913201808929, 51.26797859372288);
@@ -52,32 +58,40 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             var tile1 = TileStatic.WorldTileLocalId(wechelderzande1, 14);
             var tile2 = TileStatic.WorldTileLocalId(wechelderzande2, 14);
 
-            bool IsBarrier(TagsCollectionBase? tags)
-            {
-                if (tags == null) return false;
-
-                return DefaultMergeFactorCalculator.Barriers.TryCalculateValue(tags, out _);
-            }
-
-            var tile = TileStatic.ToLocalId(8411,5466, 14);
-            
-            // load data for tile.
-            var graph = new TiledBarrierGraph();
-            graph.LoadForTile(tile, GetTile, IsBarrier);
-            
-            // run face assignment for the tile.
-            var result =  graph.AssignFaces(tile);
+            var tile = TileStatic.WorldTileLocalId(leyton, 14);
+            var graph = LoadForTileTest.Default.RunPerformance((tile, osmTileSource, IsBarrier), 1);
+            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
+            var result = AssignFaceTest.Default.RunPerformance((graph, tile));            
             while (!result.success)
             {
-                // extra tiles need loading.-
-                graph.AddTiles(result.missingTiles, GetTile, IsBarrier);
+                // extra tiles need loading.
+                AddTilesTest.Default.RunPerformance((graph, result.missingTiles, osmTileSource, IsBarrier));
                 
                 // try again.
-                result =  graph.AssignFaces(tile);
+                result = AssignFaceTest.Default.RunPerformance((graph, tile)); 
+                
+                File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
             }
-            
-            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
-            
+
+            // var tile = TileStatic.ToLocalId(8411,5466, 14);
+            //
+            // // load data for tile.
+            // var graph = new TiledBarrierGraph();
+            // graph.LoadForTile(tile, osmTileSource.GetTile, IsBarrier);
+            //
+            // // run face assignment for the tile.
+            // var result =  graph.AssignFaces(tile);
+            // while (!result.success)
+            // {
+            //     // extra tiles need loading.-
+            //     graph.AddTiles(result.missingTiles, osmTileSource.GetTile, IsBarrier);
+            //     
+            //     // try again.
+            //     result =  graph.AssignFaces(tile);
+            // }
+            //
+            // File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
+
             //
             // var landuse = NTSExtensions.FromGeoJson(File.ReadAllText("test.geojson"));
             //
@@ -88,19 +102,19 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             // graph.AssignLanduse(tile, GetLanduse);          
             // // File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
 
-            
-            TiledBarrierGraphBuilder.BuildForTile(tile, cacheFolder, GetTile, IsBarrier);
-            //TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
-            
-            var polygonGraph = new TiledPolygonGraph();
-            polygonGraph.AddTileFromStream(tile,
-                new GZipStream(File.OpenRead(Path.Combine(cacheFolder, $"{tile1}.tile.graph.zip")),
-                    CompressionMode.Decompress));
-            // polygonGraph.AddTileFromStream(tile2,
-            //      new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile2}.tile.graph.zip")),
-            //          CompressionMode.Decompress));
-            
-            File.WriteAllText("barriers.geojson", polygonGraph.ToFeatures().ToFeatureCollection().ToGeoJson());
+            //
+            // TiledBarrierGraphBuilder.BuildForTile(tile, cacheFolder, osmTileSource.GetTile, IsBarrier);
+            // //TiledBarrierGraphBuilder.BuildForTile(tile2, "cache", GetTile, IsBarrier);
+            //
+            // var polygonGraph = new TiledPolygonGraph();
+            // polygonGraph.AddTileFromStream(tile,
+            //     new GZipStream(File.OpenRead(Path.Combine(cacheFolder, $"{tile1}.tile.graph.zip")),
+            //         CompressionMode.Decompress));
+            // // polygonGraph.AddTileFromStream(tile2,
+            // //      new GZipStream(File.OpenRead(Path.Combine("cache", $"{tile2}.tile.graph.zip")),
+            // //          CompressionMode.Decompress));
+            //
+            // File.WriteAllText("barriers.geojson", polygonGraph.ToFeatures().ToFeatureCollection().ToGeoJson());
         }
     }
 }

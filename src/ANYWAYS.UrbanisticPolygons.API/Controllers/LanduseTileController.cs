@@ -38,7 +38,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             var tile = TileStatic.ToLocalId(x, y, z);
             var box = TileStatic.Box(z, tile);
 
-            var landusePolygons = LandusePolygons.GetLandusePolygons(box, z, OsmTileSource.GetTile, t =>
+            var landusePolygons = LandusePolygons.GetLandusePolygons(box, z, Startup.TileSource.GetTile, t =>
             {
                 if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
 
@@ -93,7 +93,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             {
                 var box = TileStatic.Box(z, tile);
 
-                var landusePolygons = LandusePolygons.GetLandusePolygons(box, z, OsmTileSource.GetTile, t =>
+                var landusePolygons = LandusePolygons.GetLandusePolygons(box, z, Startup.TileSource.GetTile, t =>
                 {
                     if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
 

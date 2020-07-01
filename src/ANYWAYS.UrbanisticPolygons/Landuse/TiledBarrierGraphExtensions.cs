@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Geo;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Guids;

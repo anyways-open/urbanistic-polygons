@@ -33,7 +33,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
         [HttpGet("{z}/{x}/{y}")]
         public IAsyncEnumerable<Feature> Get(int z, uint x, uint y)
         {
-            return TiledPolygonGraphBuilder.GetPolygonsForTile((x, y, z), Startup.CachePath, OsmTileSource.GetTile,
+            return TiledPolygonGraphBuilder.GetPolygonsForTile((x, y, z), Startup.CachePath, Startup.TileSource.GetTile,
                 IsBarrier);
         }
 
@@ -78,7 +78,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             
             try
             {
-                var polygons = TiledPolygonGraphBuilder.GetPolygonsForTile((x, y, z), Startup.CachePath, OsmTileSource.GetTile,
+                var polygons = TiledPolygonGraphBuilder.GetPolygonsForTile((x, y, z), Startup.CachePath, Startup.TileSource.GetTile,
                     IsBarrier);
 
                 var layer = new Layer {Name = "urban-polygons"};

@@ -5,21 +5,19 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Web;
-using Serilog;
+using ANYWAYS.UrbanisticPolygons.Logging;
+using Microsoft.Extensions.Logging;
 
-namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
+namespace ANYWAYS.UrbanisticPolygons.IO.Download
 {
-    internal static class DownloadHelper
+    internal class CachedDownloader
     {
-        /// <summary>
-        /// Gets a stream for the content at the given url.
-        /// </summary>
-        /// <param name="url">The url.</param>
-        /// <returns>An open stream for the content at the given url.</returns>
-        public static Stream? Download(string url, string cache = "/media/xivk/2T-SSD-EXT/temp")
+        internal Stream? Download(string url, string cachePath)
         {
+            var logger = Logger.LoggerFactory.CreateLogger<CachedDownloader>();
+            
             var fileName = HttpUtility.UrlEncode(url) + ".tile.zip";
-            fileName = Path.Combine(cache, fileName);
+            fileName = Path.Combine(cachePath, fileName);
 
             if (File.Exists(fileName))
             {
@@ -27,12 +25,12 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
             }
             
             var redirectFileName = HttpUtility.UrlEncode(url) + ".tile.redirect";
-            redirectFileName = Path.Combine(cache, redirectFileName);
+            redirectFileName = Path.Combine(cachePath, redirectFileName);
 
             if (File.Exists(redirectFileName))
             {
                 var newUrl = File.ReadAllText(redirectFileName);
-                return Download(newUrl);
+                return Download(newUrl, cachePath);
             }
                 
             try
@@ -48,7 +46,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
                         return null;
                     case HttpStatusCode.Moved:
                     {
-                        return Download(response.Result.Headers.Location.ToString());
+                        return Download(response.Result.Headers.Location.ToString(), cachePath);
                     }
                     case HttpStatusCode.Redirect:
                     {
@@ -59,11 +57,11 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
                         using var streamWriter = new StreamWriter(stream);
                         streamWriter.Write(redirected);
                         
-                        return Download(redirected.ToString());
+                        return Download(redirected.ToString(), cachePath);
                     }
                 }
 
-                var temp = Path.Combine(cache, $"{Guid.NewGuid()}.temp");
+                var temp =  Path.Combine(cachePath, $"{Guid.NewGuid()}.temp");
                 using (var stream = response.GetAwaiter().GetResult().Content.ReadAsStreamAsync().GetAwaiter()
                     .GetResult())
                 using (var fileStream = File.Open(temp, FileMode.Create))
@@ -73,12 +71,10 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional.Download
                 
                 if (File.Exists(fileName)) File.Delete(fileName);
                 File.Move(temp, fileName);
-                
-                Log.Verbose($"Downloaded from {url}.");
             }
             catch (Exception ex)
             {
-                Log.Warning($"Failed to download from {url}: {ex}.");
+                logger.LogWarning(ex, "Failed to download from {url}.", url);
                 return null;
             }
             

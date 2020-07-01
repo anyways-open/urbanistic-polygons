@@ -93,28 +93,10 @@ namespace ANYWAYS.UrbanisticPolygons
             
             // first load the tile in question.
             var tileData = getTile(tile);
-            var newEdges = graph.AddNonPlanar(tileData, isBarrier);
-            
-            // load other tiles until all edges with at least one vertex in the request tile are fully loaded.
-            var extraTiles = new HashSet<uint>();
-            var enumerator = graph.GetEnumerator();
-            for (var v = 0; v < graph.VertexCount; v++)
-            {
-                if (!enumerator.MoveTo(v)) continue;
-
-                while (enumerator.MoveNext())
-                {
-                    foreach (var edgeTile in enumerator.GetTiles())
-                    {
-                        if (edgeTile == tile) continue;
-
-                        extraTiles.Add(edgeTile);
-                    }
-                }
-            }
+            var extraTiles = graph.Add(tileData, isBarrier);
             
             // add all the tiles.
-            graph.AddTiles(extraTiles, getTile, isBarrier, newEdges);
+            graph.AddTiles(extraTiles, getTile, isBarrier);
         }
 
         internal static void AddTileFor(this TiledBarrierGraph graph, int vertex, Func<uint, IEnumerable<OsmGeo>> getTile,
@@ -127,11 +109,8 @@ namespace ANYWAYS.UrbanisticPolygons
         
         internal static void AddTiles(this TiledBarrierGraph graph, IEnumerable<uint> tiles,
             Func<uint, IEnumerable<OsmGeo>> getTile,
-            Func<TagsCollectionBase, bool> isBarrier, IEnumerable<int>? newEdges = null)
+            Func<TagsCollectionBase, bool> isBarrier)
         {
-            // load other tiles.
-            var newEdgesSet = new HashSet<int>();
-            if (newEdges != null) newEdgesSet.UnionWith(newEdges);
             foreach (var tile in tiles)
             {
                 // mark tile as loaded.
@@ -139,14 +118,8 @@ namespace ANYWAYS.UrbanisticPolygons
                 
                 // get the data and load it.
                 var tileData = getTile(tile);
-                var extraTileNewEdges = graph.AddNonPlanar(tileData, isBarrier);
-                
-                // keep new edges.
-                newEdgesSet.UnionWith(extraTileNewEdges);
+                 graph.Add(tileData, isBarrier);
             }
-            
-            // flatten the graph.
-            graph.Flatten(newEdgesSet);
             
             // prune graph.
             graph.PruneDeadEnds();
@@ -157,9 +130,11 @@ namespace ANYWAYS.UrbanisticPolygons
             graph.StandardizeEdges();
         }
         
-        private static IEnumerable<int> AddNonPlanar(this TiledBarrierGraph graph, IEnumerable<OsmGeo> osmGeos,
+        private static IEnumerable<uint> Add(this TiledBarrierGraph graph, IEnumerable<OsmGeo> osmGeos,
             Func<TagsCollectionBase, bool> isBarrier)
         {
+            var uncoveredTiles = new HashSet<uint>();
+            
             // collect all nodes with more than one barrier way.
             var nodes = new Dictionary<long, (double longitude, double latitude)?>();
             var vertexNodes = new Dictionary<long, int>();
@@ -208,16 +183,18 @@ namespace ANYWAYS.UrbanisticPolygons
                 
                 nodes[node.Id.Value] = (node.Longitude.Value, node.Latitude.Value);
 
+                var tile = TileStatic.WorldTileLocalId(node.Longitude.Value, node.Latitude.Value, graph.Zoom);
                 if (!vertexNodes.ContainsKey(node.Id.Value) && 
-                    graph.HasTile(TileStatic.WorldTileLocalId(node.Longitude.Value, node.Latitude.Value, graph.Zoom)))
+                    graph.HasTile(tile))
                     continue; // node is not a vertex and inside a loaded tile.
 
                 var vertex = graph.AddVertex(node.Longitude.Value, node.Latitude.Value, node.Id.Value);
                 vertexNodes[node.Id.Value] = vertex;
+
+                if (!graph.HasTile(tile)) uncoveredTiles.Add(tile);
             }
             
             // add all edges.
-            var edges = new List<int>();
             var shape = new List<(double longitude, double latitude)>();
             while (hasNext)
             {
@@ -273,7 +250,7 @@ namespace ANYWAYS.UrbanisticPolygons
                         continue;
                     }
 
-                    edges.Add(graph.AddEdge(vertex1, vertex, shape, way.Tags, way.Id.Value));
+                    graph.AddEdgeFlattened(vertex1, vertex, shape, way.Tags, way.Id.Value);
                     vertex1 = vertex;
                     shape.Clear();
                 }
@@ -281,7 +258,7 @@ namespace ANYWAYS.UrbanisticPolygons
                 hasNext = enumerator.MoveNext();
             }
 
-            return edges;
+            return uncoveredTiles;
         }
     }
 }

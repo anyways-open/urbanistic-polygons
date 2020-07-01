@@ -58,3 +58,4 @@ perf.data.old
 .vscode/*
 *.osm.tile.zip
 *.geojson
+**/logs/*

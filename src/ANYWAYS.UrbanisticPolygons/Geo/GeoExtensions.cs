@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ANYWAYS.UrbanisticPolygons
+namespace ANYWAYS.UrbanisticPolygons.Geo
 {
     /// <summary>
     /// Contains extension methods to work with coordinates, lines, bounding boxes and basic spatial operations.
@@ -531,6 +531,36 @@ namespace ANYWAYS.UrbanisticPolygons
 //         }
 //
 
+        public static double MaxLatitude(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+        {
+            return box.topLeft.latitude;
+        }
+        
+        public static double MinLatitude(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+        {
+            return box.bottomRight.latitude;
+        }
+        
+        public static double MaxLongitude(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+        {
+            return box.bottomRight.longitude;
+        }
+        
+        public static double MinLongitude(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+        {
+            return box.topLeft.longitude;
+        }
+
+        public static double Surface(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+        {
+            return (box.MaxLatitude() - box.MinLatitude()) * (box.MaxLongitude() - box.MinLongitude());
+        }
+
         public static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)
             Expand(this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
                 ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) other)
@@ -578,7 +608,14 @@ namespace ANYWAYS.UrbanisticPolygons
             return box.bottomRight.latitude < coordinate.latitude && coordinate.latitude <= box.topLeft.latitude &&
                    box.topLeft.longitude < coordinate.longitude && coordinate.longitude <= box.bottomRight.longitude;
         }
-        
+
+        public static bool Covers(
+            this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
+            ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) other)
+        {
+            return box.Overlaps(other.topLeft) && box.Overlaps(other.bottomRight);
+        }
+
         public static bool Overlaps(
             this ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box,
             ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) other)

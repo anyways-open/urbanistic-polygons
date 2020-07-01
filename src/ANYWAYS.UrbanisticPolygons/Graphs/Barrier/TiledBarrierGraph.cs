@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using ANYWAYS.UrbanisticPolygons.Geo;
 using ANYWAYS.UrbanisticPolygons.Landuse;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using OsmSharp.Tags;
@@ -11,10 +12,12 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 {
     internal class TiledBarrierGraph
     {
-        private readonly Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes> _graph = new Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes>();
+        private readonly Graph<BarrierGraphVertex, BarrierGraphEdge, LanduseAttributes> _graph = 
+            new Graph<BarrierGraphVertex, BarrierGraphEdge, LanduseAttributes>();
         private readonly Dictionary<long, int> _vertexNodes = new Dictionary<long, int>();
         private readonly HashSet<long> _ways = new HashSet<long>();
         private readonly HashSet<uint> _tiles = new HashSet<uint>();
+        private readonly RTree<int> _vertexTree = new RTree<int>();
 
         public TiledBarrierGraph(int zoom = 14)
         {
@@ -54,14 +57,26 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
         public int AddVertex(double longitude, double latitude, long? node = null)
         {
-            var vertex = _graph.AddVertex((longitude, latitude));
+            var vertexDetails = new BarrierGraphVertex()
+            {
+                Latitude = latitude,
+                Longitude = longitude
+            };
+            var vertex = _graph.AddVertex(vertexDetails);
             if (node != null) _vertexNodes[node.Value] = vertex;
             return vertex;
         }
 
         public (double longitude, double latitude) GetVertex(int vertex)
         {
-            return _graph.GetVertex(vertex);
+            var vertexDetails = _graph.GetVertex(vertex);
+            return (vertexDetails.Longitude, vertexDetails.Latitude);
+        }
+
+        public ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)?
+            GetVertexBox(int vertex)
+        {
+            return _graph.GetVertex(vertex).Box;
         }
 
         public int AddEdge(int vertex1, int vertex2, IEnumerable<(double longitude, double latitude)>? shape = null,
@@ -74,6 +89,22 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             
             var box = new [] { this.GetVertex(vertex1), this.GetVertex(vertex2)}.Concat(shape).ToBox();
             if (box == null) throw new Exception();
+
+            var vertex1Details = _graph.GetVertex(vertex1);
+            if (vertex1Details.Box.HasValue) _vertexTree.Remove(vertex1Details.Box.Value, vertex1);
+            vertex1Details.Box = vertex1Details.Box.HasValue ?
+                vertex1Details.Box = vertex1Details.Box.Value.Expand(box.Value) :
+                box;
+            _graph.SetVertex(vertex1, vertex1Details);
+            _vertexTree.Add(vertex1Details.Box.Value, vertex1);
+            
+            var vertex2Details = _graph.GetVertex(vertex2);
+            if (vertex2Details.Box.HasValue) _vertexTree.Remove(vertex2Details.Box.Value, vertex1);
+            vertex2Details.Box = vertex2Details.Box.HasValue ?
+                vertex2Details.Box = vertex2Details.Box.Value.Expand(box.Value) :
+                box;
+            _graph.SetVertex(vertex2, vertex2Details);
+            _vertexTree.Add(vertex2Details.Box.Value, vertex2);
             
             return _graph.AddEdge(vertex1, vertex2, new BarrierGraphEdge()
             {
@@ -83,9 +114,53 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             });
         }
 
+        private ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)?
+            BoxForVertex(int vertex)
+        {
+            var enumerator = this.GetEnumerator();
+            enumerator.MoveTo(vertex);
+
+            ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)? box = null;
+            while (enumerator.MoveNext())
+            {
+                if (box == null)
+                {
+                    box = enumerator.Box;
+                }
+                else
+                {
+                    box = box.Value.Expand(enumerator.Box);
+                }
+            }
+
+            return box;
+        }
+
+        public IEnumerable<int> GetVerticesOverlapping(((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+        {
+            return _vertexTree.Get(box);
+        }
+
         public void DeleteEdge(int edge)
         {
+            var enumerator = this.GetEnumerator();
+            enumerator.MoveToEdge(edge);
+            var vertex1 = enumerator.Vertex1;
+            var vertex2 = enumerator.Vertex2;
+
             _graph.DeleteEdge(edge);
+
+            var vertex1Details = _graph.GetVertex(vertex1);
+            if (vertex1Details.Box.HasValue) _vertexTree.Remove(vertex1Details.Box.Value, vertex1);
+            vertex1Details.Box = BoxForVertex(vertex1);
+            _graph.SetVertex(vertex1, vertex1Details);
+            if (vertex1Details.Box.HasValue) _vertexTree.Add(vertex1Details.Box.Value, vertex1);
+
+            var vertex2Details = _graph.GetVertex(vertex2);
+            if (vertex2Details.Box.HasValue) _vertexTree.Remove(vertex2Details.Box.Value, vertex2);
+            vertex2Details.Box = BoxForVertex(vertex2);
+            _graph.SetVertex(vertex2, vertex2Details);
+            if (vertex2Details.Box.HasValue) _vertexTree.Add(vertex2Details.Box.Value, vertex2);
         }
         
         public void ReverseEdge(int edge)
@@ -132,7 +207,20 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             return new BarrierGraphFaceEnumerator(this);
         }
 
-        private struct BarrierGraphEdge
+        private class BarrierGraphVertex
+        {
+            public double Latitude { get; set; }
+            
+            public double Longitude { get; set; }
+            
+            public ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)? Box
+            {
+                get;
+                set;
+            }
+        }
+
+        private class BarrierGraphEdge
         {
             public ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) Box
             {
@@ -147,7 +235,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 
         public class BarrierGraphEnumerator
         {
-            private readonly Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes>.Enumerator _enumerator;
+            private readonly Graph<BarrierGraphVertex, BarrierGraphEdge, LanduseAttributes>.Enumerator _enumerator;
 
             public BarrierGraphEnumerator(TiledBarrierGraph graph)
             {
@@ -159,6 +247,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             public bool MoveTo(int vertex)
             {
                 return _enumerator.MoveTo(vertex);
+            }
+
+            public bool MoveToEdge(int edge)
+            {
+                return _enumerator.MoveToEdge(edge);
             }
 
             public bool MoveNext()
@@ -190,7 +283,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
         
         public class BarrierGraphFaceEnumerator
         {
-            private readonly Graph<(double lon, double lat), BarrierGraphEdge, LanduseAttributes>.FaceEnumerator _enumerator;
+            private readonly Graph<BarrierGraphVertex, BarrierGraphEdge, LanduseAttributes>.FaceEnumerator _enumerator;
 
             public BarrierGraphFaceEnumerator(TiledBarrierGraph graph)
             {

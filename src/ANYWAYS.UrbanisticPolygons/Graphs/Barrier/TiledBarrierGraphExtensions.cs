@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Geo;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.Tiles;
@@ -7,6 +9,7 @@ using NetTopologySuite.Algorithm;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
 using OsmSharp.Geo;
+using OsmSharp.Tags;
 
 namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
 {
@@ -32,81 +35,181 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                 if (enumerator.Edge == edge) break;
             }
         }
-        
-        internal static void Flatten(this TiledBarrierGraph graph, IEnumerable<int>? newEdges = null)
+
+        internal static void AddEdgeFlattened(this TiledBarrierGraph graph, int vertex1, int vertex2, IEnumerable<(double longitude, double latitude)>? shape = null,
+            TagsCollectionBase tags = null, long? way = null)
         {
-            HashSet<int>? edgeToCheck = null;
-            if (newEdges != null) edgeToCheck = new HashSet<int>(newEdges);
+            shape ??= Enumerable.Empty<(double longitude, double latitude)>();
             
-            var edgeEnumerator1 = graph.GetEnumerator();
-            var edgeEnumerator2 = graph.GetEnumerator();
-            for (var v1 = 0; v1 < graph.VertexCount; v1++)
+            // add the edge first.
+            var firstEdge = graph.AddEdge(vertex1, vertex2, shape, tags, way);
+            var edges = new Dictionary<int, ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)>();
+            var newEnumerator = graph.GetEnumerator();
+            newEnumerator.MoveToEdge(firstEdge);
+            edges[firstEdge] = newEnumerator.Box;
+            var firstBox = newEnumerator.Box;
+            
+            // get all the vertices with an overlap.
+            var vertices = graph.GetVerticesOverlapping(firstBox);
+
+            // check all edges already in the graph against this new edge.
+            var existingEnumerator = graph.GetEnumerator();
+            foreach (var v in vertices)
+            //for (var v = 0; v < graph.VertexCount; v++)
             {
-                var split = false;
-                if (!edgeEnumerator1.MoveTo(v1)) continue;
-                while (edgeEnumerator1.MoveNext())
+                var split = true;
+                while (split)
                 {
-                    if (split) break;
-                    if (!edgeEnumerator1.Forward) continue; // only consider forward directions
-                    if (edgeToCheck != null && !edgeToCheck.Contains(edgeEnumerator1.Edge)) continue;
-                    
-                    for (var v2 = 0; v2 < graph.VertexCount; v2++)
+                    split = false;
+                    if (!existingEnumerator.MoveTo(v)) continue;
+
+                    // check the vertex for quick negatives.
+                    var vertexBox = graph.GetVertexBox(v);
+                    if (!vertexBox.HasValue || !vertexBox.Value.Overlaps(firstBox)) continue;
+
+                    while (existingEnumerator.MoveNext())
                     {
-                        if (split) break;
+                        if (!existingEnumerator.Forward) continue; // only consider forward directions
+                        if (edges.ContainsKey(existingEnumerator.Edge)) continue; // don't test self-intersections.
 
-                        if (!edgeEnumerator2.MoveTo(v2)) continue;
+                        // check the first box for quick negatives.
+                        var edgeBox = existingEnumerator.Box;
+                        if (!edgeBox.Overlaps(firstBox)) continue;
 
-                        var box1 = edgeEnumerator1.Box;
-                        while (edgeEnumerator2.MoveNext())
+                        foreach (var e in edges)
                         {
-                            if (!edgeEnumerator2.Forward) continue; // only consider forward directions
-                            var box2 = edgeEnumerator2.Box;
-                            if (!box1.Overlaps(box2)) continue;
+                            var box = e.Value;
+                            if (!edgeBox.Overlaps(box)) continue;
+
+                            // move to the edge, boxes overlap.
+                            newEnumerator.MoveToEdge(e.Key);
 
                             // intersect here and use the first result.
-                            var intersectionResult = edgeEnumerator1.Intersect(edgeEnumerator2);
+                            var intersectionResult = existingEnumerator.Intersect(newEnumerator);
 
                             // if intersection found:
                             // - split edges
                             // - restart at v1.
                             if (intersectionResult == null) continue;
                             var intersection = intersectionResult.Value;
-
+                            
                             // get shapes.
-                            var shape11 = edgeEnumerator1.ShapeTo(intersection.shape1);
-                            var shape12 = edgeEnumerator1.ShapeFrom(intersection.shape1);
-                            var shape21 = edgeEnumerator2.ShapeTo(intersection.shape2);
-                            var shape22 = edgeEnumerator2.ShapeFrom(intersection.shape2);
+                            var shape11 = existingEnumerator.ShapeTo(intersection.shape1).ToArray();
+                            var shape12 = existingEnumerator.ShapeFrom(intersection.shape1).ToArray();
+                            var shape21 = newEnumerator.ShapeTo(intersection.shape2).ToArray();
+                            var shape22 = newEnumerator.ShapeFrom(intersection.shape2).ToArray();
 
                             // add new vertex.
                             var vertex = graph.AddVertex(intersection.longitude,
                                 intersection.latitude);
-
+                            
                             // add 4 new edges.
 
                             // edge1 vertex1 -> vertex
-                            graph.AddEdge(edgeEnumerator1.Vertex1, vertex, shape11, edgeEnumerator1.Tags);
+                            graph.AddEdge(vertex, existingEnumerator.Vertex1, shape11.Reverse(), existingEnumerator.Tags);
                             // vertex -> edge1 vertex2
-                            graph.AddEdge(vertex, edgeEnumerator1.Vertex2, shape12, edgeEnumerator1.Tags);
+                            graph.AddEdge(vertex, existingEnumerator.Vertex2, shape12, existingEnumerator.Tags);
 
                             // edge2 vertex1 -> vertex
-                            graph.AddEdge(edgeEnumerator2.Vertex1, vertex, shape21, edgeEnumerator2.Tags);
+                            var newVertex1 = newEnumerator.Vertex1;
+                            var newVertex2 = newEnumerator.Vertex2;
+                            var e1 = graph.AddEdge(vertex, newVertex1, shape21.Reverse(), newEnumerator.Tags);
+                            newEnumerator.MoveToEdge(e1);
+                            edges[e1] = newEnumerator.Box;
                             // vertex -> edge2 vertex2
-                            graph.AddEdge(vertex, edgeEnumerator2.Vertex2, shape22, edgeEnumerator2.Tags);
+                            var e2 = graph.AddEdge(vertex, newVertex2, shape22, newEnumerator.Tags);
+                            newEnumerator.MoveToEdge(e2);
+                            edges[e2] = newEnumerator.Box;
 
                             // remove original edges.
-                            graph.DeleteEdge(edgeEnumerator1.Edge);
-                            graph.DeleteEdge(edgeEnumerator2.Edge);
+                            graph.DeleteEdge(existingEnumerator.Edge);
+                            graph.DeleteEdge(e.Key);
+                            edges.Remove(e.Key);
 
                             split = true;
                             break;
                         }
+
+                        if (split) break;
                     }
                 }
-
-                if (split) v1--;
             }
         }
+        //
+        // internal static void Flatten(this TiledBarrierGraph graph, IEnumerable<int>? newEdges = null)
+        // {
+        //     HashSet<int>? edgeToCheck = null;
+        //     if (newEdges != null) edgeToCheck = new HashSet<int>(newEdges);
+        //     
+        //     var edgeEnumerator1 = graph.GetEnumerator();
+        //     var edgeEnumerator2 = graph.GetEnumerator();
+        //     for (var v1 = 0; v1 < graph.VertexCount; v1++)
+        //     {
+        //         var split = false;
+        //         if (!edgeEnumerator1.MoveTo(v1)) continue;
+        //         while (edgeEnumerator1.MoveNext())
+        //         {
+        //             if (split) break;
+        //             if (!edgeEnumerator1.Forward) continue; // only consider forward directions
+        //             if (edgeToCheck != null && !edgeToCheck.Contains(edgeEnumerator1.Edge)) continue;
+        //             
+        //             for (var v2 = 0; v2 < graph.VertexCount; v2++)
+        //             {
+        //                 if (split) break;
+        //
+        //                 if (!edgeEnumerator2.MoveTo(v2)) continue;
+        //
+        //                 var box1 = edgeEnumerator1.Box;
+        //                 while (edgeEnumerator2.MoveNext())
+        //                 {
+        //                     if (!edgeEnumerator2.Forward) continue; // only consider forward directions
+        //                     var box2 = edgeEnumerator2.Box;
+        //                     if (!box1.Overlaps(box2)) continue;
+        //
+        //                     // intersect here and use the first result.
+        //                     var intersectionResult = edgeEnumerator1.Intersect(edgeEnumerator2);
+        //
+        //                     // if intersection found:
+        //                     // - split edges
+        //                     // - restart at v1.
+        //                     if (intersectionResult == null) continue;
+        //                     var intersection = intersectionResult.Value;
+        //
+        //                     // get shapes.
+        //                     var shape11 = edgeEnumerator1.ShapeTo(intersection.shape1);
+        //                     var shape12 = edgeEnumerator1.ShapeFrom(intersection.shape1);
+        //                     var shape21 = edgeEnumerator2.ShapeTo(intersection.shape2);
+        //                     var shape22 = edgeEnumerator2.ShapeFrom(intersection.shape2);
+        //
+        //                     // add new vertex.
+        //                     var vertex = graph.AddVertex(intersection.longitude,
+        //                         intersection.latitude);
+        //
+        //                     // add 4 new edges.
+        //
+        //                     // edge1 vertex1 -> vertex
+        //                     graph.AddEdge(edgeEnumerator1.Vertex1, vertex, shape11, edgeEnumerator1.Tags);
+        //                     // vertex -> edge1 vertex2
+        //                     graph.AddEdge(vertex, edgeEnumerator1.Vertex2, shape12, edgeEnumerator1.Tags);
+        //
+        //                     // edge2 vertex1 -> vertex
+        //                     graph.AddEdge(edgeEnumerator2.Vertex1, vertex, shape21, edgeEnumerator2.Tags);
+        //                     // vertex -> edge2 vertex2
+        //                     graph.AddEdge(vertex, edgeEnumerator2.Vertex2, shape22, edgeEnumerator2.Tags);
+        //
+        //                     // remove original edges.
+        //                     graph.DeleteEdge(edgeEnumerator1.Edge);
+        //                     graph.DeleteEdge(edgeEnumerator2.Edge);
+        //
+        //                     split = true;
+        //                     break;
+        //                 }
+        //             }
+        //         }
+        //
+        //         if (split) v1--;
+        //     }
+        // }
 
         internal static void PruneShapePoints(this TiledBarrierGraph graph)
         {
@@ -276,12 +379,52 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             }
         }
 
+        internal static IEnumerable<(((double longitude, double latitude) coordinate1,
+            (double longitude, double latitude) coordinate2) line, int index)> Segments(
+            this (double longitude, double latitude)[] shape)
+        {
+            if (shape.Length < 2) yield break;
+            var location1 = shape[0];
+            var location2 = shape[1];
+            yield return ((location1, location2), 0);
+            for (var i = 2; i < shape.Length; i++)
+            {
+                location1 = location2;
+                location2 = shape[i];
+                
+                yield return ((location1, location2), i - 1);
+            }
+        }
+
         internal static (double longitude, double latitude, int shape1, int shape2)? Intersect(
             this TiledBarrierGraph.BarrierGraphEnumerator enumerator1,
             TiledBarrierGraph.BarrierGraphEnumerator enumerator2)
         {
             foreach (var segment1 in enumerator1.Segments())
             foreach (var segment2 in enumerator2.Segments())
+            {
+                Intersector.ComputeIntersection(
+                    new Coordinate(segment1.line.coordinate1.longitude, segment1.line.coordinate1.latitude),
+                    new Coordinate(segment1.line.coordinate2.longitude, segment1.line.coordinate2.latitude),
+                    new Coordinate(segment2.line.coordinate1.longitude, segment2.line.coordinate1.latitude),
+                    new Coordinate(segment2.line.coordinate2.longitude, segment2.line.coordinate2.latitude));
+                if (Intersector.HasIntersection &&
+                    Intersector.IsProper)
+                {
+                    var intersection = Intersector.GetIntersection(0);
+                    return (intersection.X, intersection.Y, segment1.index, segment2.index);
+                }
+            }
+
+            return null;
+        }
+
+        internal static (double longitude, double latitude, int shape1, int shape2)? Intersect(
+            this TiledBarrierGraph.BarrierGraphEnumerator enumerator1,
+            (double longitude, double latitude)[] shape)
+        {
+            foreach (var segment1 in enumerator1.Segments())
+            foreach (var segment2 in shape.Segments())
             {
                 Intersector.ComputeIntersection(
                     new Coordinate(segment1.line.coordinate1.longitude, segment1.line.coordinate1.latitude),
@@ -316,6 +459,26 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             for (var s = 0; s < enumerator.Shape.Length; s++)
             {
                 if (s >= index) yield return enumerator.Shape[s];
+            }
+        }
+
+        internal static IEnumerable<(double longitude, double latitude)> ShapeTo(
+            this (double longitude, double latitude)[] shape, int index)
+        {
+            if (index == 0) yield break;
+
+            for (var s = 0; s < shape.Length; s++)
+            {
+                if (s < index) yield return shape[s];
+            }
+        }
+
+        internal static IEnumerable<(double longitude, double latitude)> ShapeFrom(
+            this (double longitude, double latitude)[] shape, int index)
+        {
+            for (var s = 0; s < shape.Length; s++)
+            {
+                if (s >= index) yield return shape[s];
             }
         }
 

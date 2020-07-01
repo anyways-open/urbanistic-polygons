@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ANYWAYS.UrbanisticPolygons.Geo;
 
 namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
 {

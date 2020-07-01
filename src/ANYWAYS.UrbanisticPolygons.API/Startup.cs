@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ANYWAYS.UrbanisticPolygons.API.Formatters;
+using ANYWAYS.UrbanisticPolygons.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -22,10 +23,10 @@ namespace ANYWAYS.UrbanisticPolygons.API
         }
 
         public IConfiguration Configuration { get; }
-
-        internal static string CachePath { get; private set; } = string.Empty;
         
-        internal static string TileUrl { get; private set; } = string.Empty;
+        internal static  string CachePath { get; private set; } 
+        
+        internal static IOsmTileSource TileSource { get; private set; } 
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -70,8 +71,11 @@ namespace ANYWAYS.UrbanisticPolygons.API
                 endpoints.MapControllers();
             });
             
-            Startup.CachePath = this.Configuration["cache_path"];
-            Startup.TileUrl = this.Configuration["tile_url"];
+            var cachePath = this.Configuration["cache_path"];
+            var tileUrl = this.Configuration["tile_url"];
+
+            Startup.CachePath = cachePath;
+            Startup.TileSource = new OsmTileSource(tileUrl, cachePath);
         }
     }
 }
