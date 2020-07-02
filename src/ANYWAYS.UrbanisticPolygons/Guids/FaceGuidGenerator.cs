@@ -59,7 +59,7 @@ namespace ANYWAYS.UrbanisticPolygons.Guids
             var bytes = new List<byte>();
             
             // enumerate from found index.
-            for (var i = topLeft.i; i < locations.Length; i++)
+            for (var i = topLeft.i; i < locations.Length - 1; i++)
             {
                 var tiledLocation = locations[i];
                 

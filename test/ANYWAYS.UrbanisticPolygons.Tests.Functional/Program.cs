@@ -37,7 +37,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
                 .WriteTo.Console()
                 .CreateLogger();
             
-            var cacheFolder = "/media/xivk/2T-SSD-EXT/temp";
+            var cacheFolder = "/media/xivk/2T-SSD-EXT/temp-dev";
             var tileUrl = "https://data1.anyways.eu/tiles/full/20200628-150902/14/{x}/{y}.osm";
             
             var osmTileSource = new OsmTileSource(tileUrl, cacheFolder);
@@ -59,18 +59,27 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             var lilleLinksIndustrie = (4.803589582443237, 51.2536864893987);
             var lilleIndustrie = (4.815917015075683, 51.248807861598635);
             var lilleZagerijstraat = (4.8164963722229, 51.233426555935694);
+            var lilleHoeksken = (4.826152324676513,
+                51.245758876125024);
+            var lilleHoeksken1 = (4.826774597167969,
+                51.251373150930604);
             var vorselaarSassenhout = (4.807709455490112, 51.21146402264062);
             var vorselaarBeek = (4.7949743270874015, 51.204624839889235);
             var tile1 = TileStatic.WorldTileLocalId(wechelderzande1, 14);
             var tile2 = TileStatic.WorldTileLocalId(wechelderzande2, 14);
 
-            var tile = TileStatic.WorldTileLocalId(vorselaarBeek, 14);
-            var graph = LoadForTileTest.Default.RunPerformance((tile, osmTileSource, IsBarrier), 1);
-            var result = AssignFaceTest.Default.RunPerformance((graph, tile));          
+            var features1 = BuildFeaturesFor(TileStatic.WorldTileLocalId(lilleHoeksken1, 14),
+                osmTileSource, IsBarrier);
+            var features2 = BuildFeaturesFor(TileStatic.WorldTileLocalId(lilleHoeksken, 14),
+                osmTileSource, IsBarrier);
             
-            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
+            File.WriteAllText("barriers1.geojson", features1.ToFeatureCollection().ToGeoJson());
+            File.WriteAllText("barriers2.geojson", features2.ToFeatureCollection().ToGeoJson());
             return;
             
+            var tile = TileStatic.WorldTileLocalId(lilleHoeksken, 14);
+            var graph = LoadForTileTest.Default.RunPerformance((tile, osmTileSource, IsBarrier), 1);
+            var result = AssignFaceTest.Default.RunPerformance((graph, tile));
             while (!result.success)
             {
                 // extra tiles need loading.
@@ -99,8 +108,7 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
                     return null;
                 });
             }
-            graph.AssignLanduse(tile, GetLanduse);    
-            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson()); 
+            graph.AssignLanduse(tile, GetLanduse); File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson()); 
             
             var outerBox = graph.OuterBox(tile);
 
@@ -152,6 +160,43 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             // //          CompressionMode.Decompress));
             //
             // File.WriteAllText("barriers.geojson", polygonGraph.ToFeatures().ToFeatureCollection().ToGeoJson());
+        }
+
+        private static IEnumerable<Feature> BuildFeaturesFor(uint tile, OsmTileSource osmTileSource, Func<TagsCollectionBase, bool> isBarrier)
+        {
+                        var graph = LoadForTileTest.Default.RunPerformance((tile, osmTileSource, isBarrier), 1);
+            var result = AssignFaceTest.Default.RunPerformance((graph, tile));
+            while (!result.success)
+            {
+                // extra tiles need loading.
+                AddTilesTest.Default.RunPerformance((graph, result.missingTiles, osmTileSource, isBarrier));
+                
+                // try again.
+                result = AssignFaceTest.Default.RunPerformance((graph, tile)); 
+            }
+            
+            // assign landuse.
+            //
+            // var landuseFeatures = NTSExtensions.FromGeoJson(File.ReadAllText("test.geojson"));
+            //
+            // IEnumerable<(Polygon polygon, string type)> GetLanduse(((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+            // {
+            //     return new (Polygon polygon, string type)[] { (landuseFeatures.First().Geometry as Polygon, "residential") };
+            // }
+            
+            IEnumerable<(Polygon polygon, string type)> GetLanduse(
+                ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+            {
+                return LandusePolygons.GetLandusePolygons(box, graph.Zoom, osmTileSource.GetTile, t =>
+                {
+                    if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
+            
+                    return null;
+                });
+            }
+            graph.AssignLanduse(tile, GetLanduse);
+
+            return graph.ToFeatures();
         }
     }
 }

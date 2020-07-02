@@ -3,6 +3,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using ANYWAYS.UrbanisticPolygons.Data;
 using ANYWAYS.UrbanisticPolygons.Tiles;
+using Microsoft.Extensions.Configuration;
+using OsmSharp.Logging;
 using OsmSharp.Tags;
 using Serilog;
 using Serilog.Formatting.Json;
@@ -13,20 +15,14 @@ namespace ANYWAYS.UrbanisticPolygons.Preprocessor
     {
         static async Task Main(string[] args)
         {
-            var logFile = Path.Combine("logs", "log-{Date}.txt");
-            Log.Logger = new LoggerConfiguration()
-#if DEBUG
-                .MinimumLevel.Debug()
-#else
-                .MinimumLevel.Information()
-#endif
-                .Enrich.FromLogContext()
-                .WriteTo.RollingFile(new JsonFormatter(), logFile)
-                .WriteTo.Console()
-                .CreateLogger();
+            var config = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", true, true)
+                .Build();
+
+            EnableLogging(config);
             
-            var cacheFolder = "/media/xivk/2T-SSD-EXT/temp";
-            var tileUrl = "https://data1.anyways.eu/tiles/full/20200628-150902/14/{x}/{y}.osm";
+            var cacheFolder = config["cache_folder"];
+            var tileUrl = config["tile_url"];
             
             var osmTileSource = new OsmTileSource(tileUrl, cacheFolder);
 
@@ -49,6 +45,67 @@ namespace ANYWAYS.UrbanisticPolygons.Preprocessor
                     return osmTileSource.GetTile(x);
                 }, IsBarrier);
             }
+        }
+        
+        private static void EnableLogging(IConfigurationRoot config)
+        {
+            // enable logging.
+            Logger.LogAction = (origin, level, message, parameters) =>
+            {
+                var formattedMessage = $"{origin} - {message}";
+                switch (level)
+                {
+                    case "critical":
+                        Log.Fatal(formattedMessage);
+                        break;
+                    case "error":
+                        Log.Error(formattedMessage);
+                        break;
+                    case "warning":
+                        Log.Warning(formattedMessage);
+                        break;
+                    case "verbose":
+                        Log.Verbose(formattedMessage);
+                        break;
+                    case "information":
+                        Log.Information(formattedMessage);
+                        break;
+                    default:
+                        Log.Debug(formattedMessage);
+                        break;
+                }
+            };
+            // enable logging.
+            OsmSharp.Logging.Logger.LogAction = (origin, level, message, parameters) =>
+            {
+                var formattedMessage = $"{origin} - {message}";
+                switch (level)
+                {
+                    case "critical":
+                        Log.Fatal(formattedMessage);
+                        break;
+                    case "error":
+                        Log.Error(formattedMessage);
+                        break;
+                    case "warning":
+                        Log.Warning(formattedMessage);
+                        break;
+                    case "verbose":
+                        Log.Verbose(formattedMessage);
+                        break;
+                    case "information":
+                        Log.Information(formattedMessage);
+                        break;
+                    default:
+                        Log.Debug(formattedMessage);
+                        break;
+                }
+            };
+
+
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(config)
+                .CreateLogger();
         }
     }
 }
