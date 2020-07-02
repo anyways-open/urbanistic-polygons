@@ -37,9 +37,7 @@ namespace ANYWAYS.UrbanisticPolygons.Preprocessor
                 return DefaultMergeFactorCalculator.Barriers.TryCalculateValue(tags, out _);
             }
             
-            var box = ((4.604644775390625,
-                51.382066781130575), (4.94384765625,
-                51.19655766797793));
+            var box = ((4.239349365234375, 51.36749369152795), (5.16632080078125, 50.92554455650557));
 
             var tiles = box.TilesFor(14).Select(x => TileStatic.ToLocalId(x, 14));
             foreach (var tile in tiles)
@@ -47,7 +45,7 @@ namespace ANYWAYS.UrbanisticPolygons.Preprocessor
                 Log.Information($"Processing tile {TileStatic.ToTile(14, tile)}...");
                 await TiledBarrierGraphBuilder.BuildForTile(tile, cacheFolder, x =>
                 {
-                    Log.Information($"Fetching OSM data tile {TileStatic.ToTile(14, x)}...");
+                    //Log.Information($"Fetching OSM data tile {TileStatic.ToTile(14, x)}...");
                     return osmTileSource.GetTile(x);
                 }, IsBarrier);
             }
