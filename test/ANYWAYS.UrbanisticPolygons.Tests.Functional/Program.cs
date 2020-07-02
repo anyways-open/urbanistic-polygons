@@ -58,10 +58,11 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             var lille = (4.82594, 51.24203);
             var lilleLinksIndustrie = (4.803589582443237, 51.2536864893987);
             var lilleIndustrie = (4.815917015075683, 51.248807861598635);
+            var lilleZagerijstraat = (4.8164963722229, 51.233426555935694);
             var tile1 = TileStatic.WorldTileLocalId(wechelderzande1, 14);
             var tile2 = TileStatic.WorldTileLocalId(wechelderzande2, 14);
 
-            var tile = TileStatic.WorldTileLocalId(lilleIndustrie, 14);
+            var tile = TileStatic.WorldTileLocalId(lilleZagerijstraat, 14);
             var graph = LoadForTileTest.Default.RunPerformance((tile, osmTileSource, IsBarrier), 1);
             var result = AssignFaceTest.Default.RunPerformance((graph, tile));            
             while (!result.success)
@@ -74,16 +75,24 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             }
             
             // assign landuse.
-            IEnumerable<(Polygon polygon, string type)> GetLanduse(
-                ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+            
+            var landuseFeatures = NTSExtensions.FromGeoJson(File.ReadAllText("test.geojson"));
+            
+            IEnumerable<(Polygon polygon, string type)> GetLanduse(((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
             {
-                return LandusePolygons.GetLandusePolygons(box, graph.Zoom, osmTileSource.GetTile, t =>
-                {
-                    if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
-
-                    return null;
-                });
+                return new (Polygon polygon, string type)[] { (landuseFeatures.First().Geometry as Polygon, "residential") };
             }
+            
+            // IEnumerable<(Polygon polygon, string type)> GetLanduse(
+            //     ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+            // {
+            //     return LandusePolygons.GetLandusePolygons(box, graph.Zoom, osmTileSource.GetTile, t =>
+            //     {
+            //         if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
+            //
+            //         return null;
+            //     });
+            // }
             graph.AssignLanduse(tile, GetLanduse);    
             File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson()); 
             

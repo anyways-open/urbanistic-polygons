@@ -42,7 +42,7 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
                     var percentage = 0.0;
                     try
                     {
-                        if (!polygon.Envelope.Overlaps(facePolygon.Envelope)) continue;
+                        if (!polygon.EnvelopeInternal.Intersects(facePolygon.EnvelopeInternal)) continue;
                         
                         if (polygon.Covers(facePolygon))
                         {
