@@ -19,11 +19,11 @@ using OsmSharp.Logging;
 [assembly:InternalsVisibleTo("ANYWAYS.UrbanisticPolygons.Tests.Functional")]
 namespace ANYWAYS.UrbanisticPolygons
 {
-    internal static class TiledBarrierGraphBuilder
+    public static class TiledBarrierGraphBuilder
     {
         private static readonly ConcurrentDictionary<uint, uint> _tiles = new ConcurrentDictionary<uint, uint>();
 
-        internal static async Task BuildForTile(uint tile, string folder, Func<uint, IEnumerable<OsmGeo>> getTile,
+        public static async Task BuildForTile(uint tile, string folder, Func<uint, IEnumerable<OsmGeo>> getTile,
             Func<TagsCollectionBase, bool> isBarrier)
         {
             // wait until tile is removed from queue.

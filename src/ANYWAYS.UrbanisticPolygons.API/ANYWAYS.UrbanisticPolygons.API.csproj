@@ -16,4 +16,12 @@
     <PackageReference Include="NetTopologySuite.IO.VectorTiles.Mapbox" Version="0.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="appsettings.production.json">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
