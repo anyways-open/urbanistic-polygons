@@ -1,7 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using ANYWAYS.UrbanisticPolygons.Geo;
 using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using NetTopologySuite.Features;
@@ -17,6 +17,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
             uint tile)
         {
             if (!graph.HasTile(tile)) return (false, new[] {tile});
+            var tileBox = TileStatic.Box(graph.Zoom, tile);
 
             var tilesMissing = new HashSet<uint>();
             graph.ResetFaces();
@@ -32,14 +33,20 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 if (!enumerator.MoveNext()) continue;
 
                 var vLocation = graph.GetVertex(v);
-                var vTile = TileStatic.WorldTileLocalId(vLocation.longitude, vLocation.latitude, graph.Zoom);
-                if (vTile != tile) continue;
+                var vBox = graph.GetVertexBox(v);
+                if (vBox == null || !vBox.Value.Overlaps(tileBox)) continue;
+                // var vTile = TileStatic.WorldTileLocalId(vLocation.longitude, vLocation.latitude, graph.Zoom);
+                // if (vTile != tile) continue;
 
                 enumerator.MoveTo(v);
                 while (enumerator.MoveNext())
                 {
                     if (enumerator.Forward && enumerator.FaceRight != int.MaxValue) continue;
                     if (!enumerator.Forward && enumerator.FaceLeft != int.MaxValue) continue;
+                    
+                    // check if the edge bbox overlaps the tiles.
+                    var eBox = enumerator.Box;
+                    if (!eBox.Overlaps(tileBox)) continue;
 
                     // ok this edge has an undetermined face.
                     var result = enumerator.AssignFace(unAssignableFace);
@@ -121,7 +128,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
         public static
             IEnumerable<(int vertex1, int edge, bool forward, int vertex2, (double longitude, double latitude)[] shape)>
             EnumerateFaceClockwise(
-                this TiledBarrierGraph graph, int face)
+                this TiledBarrierGraph graph, int face, int maxFaceCount = ushort.MaxValue)
         {
             var enumerator = graph.GetFaceEnumerator();
             if (!enumerator.MoveTo(face)) yield break;
@@ -137,6 +144,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 else
                 {
                     edges.Add((enumerator.Vertex1, enumerator.Edge, true, enumerator.Vertex2, enumerator.Shape));
+                }
+
+                if (edges.Count > maxFaceCount)
+                {
+                    yield break;
                 }
             }
 
@@ -194,9 +206,15 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
             {
                 coordinates.Add(new Coordinate(c.longitude, c.latitude));
             }
-            
+
+            var attributes = new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}};
+            var faceData = graph.GetFaceData(face);
+            foreach (var fa in faceData)
+            {
+                attributes.Add($"face_{fa.type}", fa.percentage);
+            }
             return new Feature(new NetTopologySuite.Geometries.Polygon(new LinearRing(coordinates.ToArray())), 
-                new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}});
+                attributes);
         }
     }
 }

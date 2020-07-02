@@ -55,12 +55,13 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             var wechelderzande4 = (4.774868488311768, 51.267366046233136);
             var staden = (3.0198, 50.9743);
             var leyton = (-0.00303, 51.56436);
+            var lille = (4.82594, 51.24203);
+            var lilleLinksIndustrie = (4.803589582443237, 51.2536864893987);
             var tile1 = TileStatic.WorldTileLocalId(wechelderzande1, 14);
             var tile2 = TileStatic.WorldTileLocalId(wechelderzande2, 14);
 
-            var tile = TileStatic.WorldTileLocalId(leyton, 14);
+            var tile = TileStatic.WorldTileLocalId(lilleLinksIndustrie, 14);
             var graph = LoadForTileTest.Default.RunPerformance((tile, osmTileSource, IsBarrier), 1);
-            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
             var result = AssignFaceTest.Default.RunPerformance((graph, tile));            
             while (!result.success)
             {
@@ -69,9 +70,29 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
                 
                 // try again.
                 result = AssignFaceTest.Default.RunPerformance((graph, tile)); 
-                
-                File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson());
             }
+            
+            // assign landuse.
+            IEnumerable<(Polygon polygon, string type)> GetLanduse(
+                ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight) box)
+            {
+                return LandusePolygons.GetLandusePolygons(box, graph.Zoom, osmTileSource.GetTile, t =>
+                {
+                    if (DefaultMergeFactorCalculator.Landuses.TryCalculateValue(t, out var type)) return type;
+
+                    return null;
+                });
+            }
+            graph.AssignLanduse(tile, GetLanduse);    
+            File.WriteAllText("barriers.geojson", graph.ToFeatures().ToFeatureCollection().ToGeoJson()); 
+            
+            var outerBox = graph.OuterBox(tile);
+
+            // get all landuse polygon in the larger box.
+            var landuse = GetLanduse(outerBox).ToList();
+                
+            File.WriteAllText("landuse.geojson", landuse.Select(x => 
+                new Feature(x.polygon, new AttributesTable {{"type", x.type}})).ToFeatureCollection().ToGeoJson());
 
             // var tile = TileStatic.ToLocalId(8411,5466, 14);
             //

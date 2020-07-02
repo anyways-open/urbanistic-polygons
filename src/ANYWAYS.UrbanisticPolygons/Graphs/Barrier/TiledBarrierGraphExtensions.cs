@@ -50,12 +50,12 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             var firstBox = newEnumerator.Box;
             
             // get all the vertices with an overlap.
-            var vertices = graph.GetVerticesOverlapping(firstBox);
+            // var vertices = graph.GetVerticesOverlapping(firstBox);
 
             // check all edges already in the graph against this new edge.
             var existingEnumerator = graph.GetEnumerator();
-            foreach (var v in vertices)
-            //for (var v = 0; v < graph.VertexCount; v++)
+            // foreach (var v in vertices)
+            for (var v = 0; v < graph.VertexCount; v++)
             {
                 var split = true;
                 while (split)

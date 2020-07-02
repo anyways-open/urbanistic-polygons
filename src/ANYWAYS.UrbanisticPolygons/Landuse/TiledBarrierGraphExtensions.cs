@@ -4,9 +4,7 @@ using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Geo;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
-using ANYWAYS.UrbanisticPolygons.Guids;
 using ANYWAYS.UrbanisticPolygons.Tiles;
-using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
 using OsmSharp.Logging;
 
@@ -19,24 +17,10 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
             Func<((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight), IEnumerable<(Polygon polygon, string type)>> getLanduse)
         {
             var tileBox = TileStatic.Box(tiledBarrierGraph.Zoom, tile);
-            var largerBox = tileBox;
-            
-            // expand box until we have the total outline.
-            for (var f = 1; f < tiledBarrierGraph.FaceCount; f++)
-            {
-                // determine if face overlaps with tile.
-                var box = tiledBarrierGraph.FaceToClockwiseCoordinates(f).ToBox();
-                if (box == null) continue;
-                if (!box.Value.Overlaps(tileBox)) continue; // face is not in tile.
-
-                // expand the box if needed.
-                if (largerBox.Overlaps(box.Value.bottomRight) &&
-                    largerBox.Overlaps(box.Value.topLeft)) continue;
-                largerBox = largerBox.Expand(box.Value);
-            }
+            var outerBox = tiledBarrierGraph.OuterBox(tile);
 
             // get all landuse polygon in the larger box.
-            var landuse = getLanduse(largerBox).ToList();
+            var landuse = getLanduse(outerBox).ToList();
             
             for (var f = 1; f < tiledBarrierGraph.FaceCount; f++)
             {
@@ -110,6 +94,29 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
                 }
                 tiledBarrierGraph.SetFaceData(f, attributes);
             }
+        }
+
+        internal static ((double longitude, double latitude) topLeft, (double longitude, double latitude) bottomRight)
+            OuterBox(this TiledBarrierGraph tiledBarrierGraph, uint tile)
+        {
+            var tileBox = TileStatic.Box(tiledBarrierGraph.Zoom, tile);
+            var largerBox = tileBox;
+            
+            // expand box until we have the total outline.
+            for (var f = 1; f < tiledBarrierGraph.FaceCount; f++)
+            {
+                // determine if face overlaps with tile.
+                var box = tiledBarrierGraph.FaceToClockwiseCoordinates(f).ToBox();
+                if (box == null) continue;
+                if (!box.Value.Overlaps(tileBox)) continue; // face is not in tile.
+
+                // expand the box if needed.
+                if (largerBox.Overlaps(box.Value.bottomRight) &&
+                    largerBox.Overlaps(box.Value.topLeft)) continue;
+                largerBox = largerBox.Expand(box.Value);
+            }
+
+            return largerBox;
         }
     }
 }
