@@ -57,10 +57,11 @@ namespace ANYWAYS.UrbanisticPolygons.Tests.Functional
             var leyton = (-0.00303, 51.56436);
             var lille = (4.82594, 51.24203);
             var lilleLinksIndustrie = (4.803589582443237, 51.2536864893987);
+            var lilleIndustrie = (4.815917015075683, 51.248807861598635);
             var tile1 = TileStatic.WorldTileLocalId(wechelderzande1, 14);
             var tile2 = TileStatic.WorldTileLocalId(wechelderzande2, 14);
 
-            var tile = TileStatic.WorldTileLocalId(lilleLinksIndustrie, 14);
+            var tile = TileStatic.WorldTileLocalId(lilleIndustrie, 14);
             var graph = LoadForTileTest.Default.RunPerformance((tile, osmTileSource, IsBarrier), 1);
             var result = AssignFaceTest.Default.RunPerformance((graph, tile));            
             while (!result.success)

@@ -32,7 +32,6 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 if (!enumerator.MoveTo(v)) continue;
                 if (!enumerator.MoveNext()) continue;
 
-                var vLocation = graph.GetVertex(v);
                 var vBox = graph.GetVertexBox(v);
                 if (vBox == null || !vBox.Value.Overlaps(tileBox)) continue;
                 // var vTile = TileStatic.WorldTileLocalId(vLocation.longitude, vLocation.latitude, graph.Zoom);

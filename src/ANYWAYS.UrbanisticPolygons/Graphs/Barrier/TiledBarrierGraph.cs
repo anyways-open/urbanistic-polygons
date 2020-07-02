@@ -168,7 +168,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
             _graph.ReverseEdge(edge, ed => new BarrierGraphEdge()
             {
                 Shape = ed.Shape.Reverse().ToArray(),
-                Tags = ed.Tags
+                Tags = ed.Tags,
+                Box = ed.Box
             });
         }
 
