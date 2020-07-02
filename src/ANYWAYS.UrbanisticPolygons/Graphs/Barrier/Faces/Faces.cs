@@ -106,10 +106,35 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
         {
             var (loop, missingTiles) = enumerator.RightTurnLoop();
             if (loop == null) return (false, missingTiles);
-
+            
             var face = unAssignableFace;
             if (loop[0].vertex1 == loop[^1].vertex2)
             {
+                // remove parts that go over the same edge twice.
+                var removed = true;
+                while (removed)
+                {
+                    removed = false;
+                    var edges = new Dictionary<int, int>();
+                    for (var i = 0; i < loop.Count; i++)
+                    {
+                        var e = loop[i].edge;
+                        if (edges.TryGetValue(e, out var fi))
+                        {
+                            var copy = new List<(int vertex1, int edge, bool forward, int vertex2)>(loop);
+                            
+                            // a duplicate was detected.
+                            copy.RemoveRange(fi, i - fi + 1);
+                            loop = copy;
+                            
+                            removed = true;
+                            break;
+                        }
+
+                        edges.Add(e, i);
+                    }
+                }
+
                 // if loop is closed then we have a new face.
                 face = enumerator.Graph.AddFace();
             }
@@ -195,6 +220,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
                 coordinates.Add(new Coordinate(c.longitude, c.latitude));
             }
 
+            if (coordinates.Count <= 3) return null;
+
             return new Polygon(new LinearRing(coordinates.ToArray()));
         }
 
@@ -205,6 +232,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
             {
                 coordinates.Add(new Coordinate(c.longitude, c.latitude));
             }
+
+            if (coordinates.Count <= 3) return null;
 
             var attributes = new AttributesTable {{"face", face}, {"face_guid", graph.GetFaceGuid(face)}};
             var faceData = graph.GetFaceData(face);

@@ -63,7 +63,8 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Serialization
             for (var f = 1; f < graph.FaceCount; f++)
             {
                 var faceGuid = graph.GetFaceGuid(f);
-                stream.Write(faceGuid.ToByteArray());
+                if (faceGuid == null) continue;
+                stream.Write(faceGuid.Value.ToByteArray());
                 
                 // write edges.
                 var edges = graph.EnumerateFaceClockwise(f).ToList();

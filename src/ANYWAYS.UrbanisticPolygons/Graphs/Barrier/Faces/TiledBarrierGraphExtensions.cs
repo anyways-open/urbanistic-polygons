@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Geo;
 
@@ -22,6 +24,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces
 
                 var nextNonLocation = nextEnumerator.FirstNonVertex1();
                 var angle = GeoExtensions.Angle(v2NonLocation, v2Location, nextNonLocation);
+                if (angle == double.NaN) Debug.Assert(false); 
                 sortedByAngle[angle] = nextEnumerator.Edge;
             }
             

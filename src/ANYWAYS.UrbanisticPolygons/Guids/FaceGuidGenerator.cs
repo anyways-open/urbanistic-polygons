@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier;
 using ANYWAYS.UrbanisticPolygons.Graphs.Barrier.Faces;
 using ANYWAYS.UrbanisticPolygons.Graphs.Polygons;
 using ANYWAYS.UrbanisticPolygons.IO;
 using ANYWAYS.UrbanisticPolygons.Tiles;
+using GeoAPI.Geometries;
+using Coordinate = NetTopologySuite.Geometries.Coordinate;
 
 namespace ANYWAYS.UrbanisticPolygons.Guids
 {
@@ -20,17 +23,12 @@ namespace ANYWAYS.UrbanisticPolygons.Guids
         /// </summary>
         /// <param name="graph">The graph.</param>
         /// <param name="face">The face.</param>
-        public static Guid GetFaceGuid(this TiledBarrierGraph graph, int face)
+        public static Guid? GetFaceGuid(this TiledBarrierGraph graph, int face)
         {
-            var bytes = new List<byte>();
-            foreach (var c in graph.FaceToClockwiseCoordinates(face))
-            {
-                var tiledLocation = TileStatic.ToLocalTileCoordinates(graph.Zoom, c, 16384);
-                
-                bytes.AddRange(tiledLocation.GetBytes());
-            }
-            
-            return GuidUtility.Create(Namespace, bytes);
+            var locations = graph.FaceToClockwiseCoordinates(face).Select(x => 
+                TileStatic.ToLocalTileCoordinates(14, x, 16384)).ToArray();
+
+            return GetFaceGuidFor(locations);
         }
         
         /// <summary>
@@ -38,12 +36,41 @@ namespace ANYWAYS.UrbanisticPolygons.Guids
         /// </summary>
         /// <param name="graph">The graph.</param>
         /// <param name="face">The face.</param>
-        public static Guid GetFaceGuid(this TiledPolygonGraph graph, int face)
+        public static Guid? GetFaceGuid(this TiledPolygonGraph graph, int face)
         {
-            var bytes = new List<byte>();
-            foreach (var c in graph.FaceToClockwiseCoordinates(face))
+            return GetFaceGuidFor(graph.FaceToClockwiseCoordinates(face).ToArray());
+        }
+
+        private static Guid? GetFaceGuidFor((int x, int y, uint tileId)[] locations)
+        {
+            if (locations.Length == 0) return null;
+            
+            // find the most top-left coordinate and use that as the start.
+            ((int x, int y, uint tileId) location, int i) topLeft = (locations[0], 0);
+            for (var i = 1; i < locations.Length; i++)
             {
-                bytes.AddRange(c.GetBytes());
+                var l = locations[i];
+                var c = topLeft.location.CompareTopLeft(l);
+                if (c <= 0) continue;
+
+                topLeft = (l, i);
+            }
+            
+            var bytes = new List<byte>();
+            
+            // enumerate from found index.
+            for (var i = topLeft.i; i < locations.Length; i++)
+            {
+                var tiledLocation = locations[i];
+                
+                bytes.AddRange(tiledLocation.GetBytes());
+            }
+            // enumerate to found index.
+            for (var i = 0; i < topLeft.i; i++)
+            {
+                var tiledLocation = locations[i];
+                
+                bytes.AddRange(tiledLocation.GetBytes());
             }
             
             return GuidUtility.Create(Namespace, bytes);

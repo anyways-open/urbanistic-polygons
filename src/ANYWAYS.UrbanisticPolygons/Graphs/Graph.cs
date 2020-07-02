@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace ANYWAYS.UrbanisticPolygons.Graphs
 {
@@ -289,10 +290,16 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs
                 this.IsLeft = _nextEdge.left;
                 if (_nextEdge.left)
                 {
+#if DEBUG
+                    // if (edge.left != _face) throw new InvalidDataException();
+#endif
                     _nextEdge = (edge.nextLeft, edge.nextLeftLeft);
                 }
                 else
                 {
+#if DEBUG
+                    // if (edge.right != _face) throw new InvalidDataException();
+#endif
                     _nextEdge = (edge.nextRight, edge.nextRightLeft);
                 }
                 

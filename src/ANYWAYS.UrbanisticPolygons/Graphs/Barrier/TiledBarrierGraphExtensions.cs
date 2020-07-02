@@ -498,6 +498,10 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Barrier
                     var lineString = enumerator.ToLineString();
                     var attributes = enumerator.ToAttributeTable();
 
+                    attributes.Add("edge", enumerator.Edge);
+                    attributes.Add("edge_vertex_1", enumerator.Vertex1);
+                    attributes.Add("edge_vertex_2", enumerator.Vertex2);
+
                     yield return new Feature(lineString, attributes);
                 }
                 

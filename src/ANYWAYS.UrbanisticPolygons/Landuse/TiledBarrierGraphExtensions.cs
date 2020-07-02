@@ -73,6 +73,10 @@ namespace ANYWAYS.UrbanisticPolygons.Landuse
                     }
                     catch (Exception e)
                     {
+                        var polygonizer = new NetTopologySuite.Operation.Polygonize.Polygonizer();
+                        polygonizer.Add(facePolygon);
+                        var polygons = polygonizer.GetPolygons();
+                        
                         // TODO: non-noded intersections, due to invalid polygons?
                         OsmSharp.Logging.Logger.Log(nameof(TiledBarrierGraphBuilder), TraceEventType.Warning,
                             $"Unhandled exception calculating intersections.");

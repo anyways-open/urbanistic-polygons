@@ -182,9 +182,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                 coordinates.Add(new Coordinate(cLocation.longitude, cLocation.latitude));
             }
 
-            if (coordinates.Count < 3) return null;
+            if (coordinates.Count <= 3) return null;
 
             var faceGuid = graph.GetFaceGuid(face);
+            if (faceGuid == null) return null;
+            
             var attributes = new AttributesTable {{"face", face}, {"face_guid", faceGuid}};
             var faceAttributes = graph.GetFaceData(face);
             foreach (var (type, per) in faceAttributes)
@@ -193,7 +195,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
             }
             
             return (new Feature(new NetTopologySuite.Geometries.Polygon(new LinearRing(coordinates.ToArray())), 
-                attributes), faceGuid);
+                attributes), faceGuid.Value);
         }
 
         public static IEnumerable<(int x, int y, uint tileId)> FaceToClockwiseCoordinates(

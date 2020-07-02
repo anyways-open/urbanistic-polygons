@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace ANYWAYS.UrbanisticPolygons.Geo
 {
@@ -23,13 +24,36 @@ namespace ANYWAYS.UrbanisticPolygons.Geo
         {
             var v11 = coordinate1.latitude - coordinate2.latitude;
             var v10 = coordinate1.longitude - coordinate2.longitude;
-
-            var minDiff = 0.000001; 
-            if (Math.Abs(v11) < minDiff || Math.Abs(v10) < minDiff)
+            
+            // do some extras for numerical stability.
+            var v10Abs = Math.Abs(v10);
+            var v11Abs = Math.Abs(v11);
+            if (v10Abs < double.Epsilon && 
+                v11Abs < double.Epsilon)
             {
-                var factor = System.Math.Max(
-                    (minDiff * 2) / Math.Abs(v11), 
-                    (minDiff * 2) / Math.Abs(v10));
+                return double.NaN;
+            }
+
+            // increase diffs.
+            var minDiff = 0.000001; 
+            if (v10Abs < minDiff || v11Abs < minDiff)
+            {
+                var factor = 1.0;
+                if (v10Abs >= double.Epsilon && v11Abs >= double.Epsilon)
+                {
+                    factor = Math.Max(
+                        (minDiff * 2) / v10Abs, 
+                        (minDiff * 2) / v11Abs);
+                }
+                else if (v10Abs >= double.Epsilon)
+                {
+                    factor = (minDiff * 2) / v10Abs;
+                }
+                else
+                {
+                    factor = (minDiff * 2) / v11Abs;
+                }
+                
                 v11 *= factor;
                 v10 *= factor;
             }
@@ -37,15 +61,38 @@ namespace ANYWAYS.UrbanisticPolygons.Geo
             var v21 = coordinate3.latitude - coordinate2.latitude;
             var v20 = coordinate3.longitude - coordinate2.longitude;
             
-            if (Math.Abs(v21) < minDiff || Math.Abs(v20) < minDiff)
+            // do some extras for numerical stability.
+            var v20Abs = Math.Abs(v20);
+            var v21Abs = Math.Abs(v21);
+            if (v20Abs < double.Epsilon && 
+                v21Abs < double.Epsilon)
             {
-                var factor = System.Math.Max(
-                    (minDiff * 2) / Math.Abs(v21), 
-                    (minDiff * 2) / Math.Abs(v20));
+                return double.NaN;
+            }
+
+            // increase diffs.
+            if (v20Abs < minDiff || v21Abs < minDiff)
+            {
+                var factor = 1.0;
+                if (v20Abs >= double.Epsilon && v21Abs >= double.Epsilon)
+                {
+                    factor = Math.Max(
+                        (minDiff * 2) / v20Abs, 
+                        (minDiff * 2) / v21Abs);
+                }
+                else if (v20Abs >= double.Epsilon)
+                {
+                    factor = (minDiff * 2) / v20Abs;
+                }
+                else
+                {
+                    factor = (minDiff * 2) / v21Abs;
+                }
+                
                 v21 *= factor;
                 v20 *= factor;
             }
-
+            
             var v1size = System.Math.Sqrt(v11 * v11 + v10 * v10);
             var v2size = System.Math.Sqrt(v21 * v21 + v20 * v20);
 
