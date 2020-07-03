@@ -15,8 +15,11 @@ namespace ANYWAYS.UrbanisticPolygons.IO.Download
         internal Stream? Download(string url, string cachePath)
         {
             var logger = Logger.LoggerFactory.CreateLogger<CachedDownloader>();
-            
-            var fileName = HttpUtility.UrlEncode(url) + ".tile.zip";
+
+            var baseFileName = HttpUtility.UrlEncode(
+                url.Replace('/', '-')
+                    .Replace(':', '-'));
+            var fileName =  baseFileName + ".tile.zip";
             fileName = Path.Combine(cachePath, fileName);
 
             if (File.Exists(fileName))
@@ -24,7 +27,7 @@ namespace ANYWAYS.UrbanisticPolygons.IO.Download
                 return new GZipStream(File.OpenRead(fileName), CompressionMode.Decompress);
             }
             
-            var redirectFileName = HttpUtility.UrlEncode(url) + ".tile.redirect";
+            var redirectFileName = baseFileName + ".tile.redirect";
             redirectFileName = Path.Combine(cachePath, redirectFileName);
 
             if (File.Exists(redirectFileName))

@@ -227,7 +227,7 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
         public static
             IEnumerable<(int vertex1, int edge, bool forward, int vertex2, (int x, int y, uint tileId)[] shape)>
             EnumerateFaceClockwise(
-                this TiledPolygonGraph graph, int face)
+                this TiledPolygonGraph graph, int face, int maxFaceCount = ushort.MaxValue)
         {
             var enumerator = graph.GetFaceEnumerator();
             if (!enumerator.MoveTo(face)) yield break;
@@ -243,6 +243,11 @@ namespace ANYWAYS.UrbanisticPolygons.Graphs.Polygons
                 else
                 {
                     edges.Add((enumerator.Vertex1, enumerator.Edge, true, enumerator.Vertex2, enumerator.Shape));
+                }
+
+                if (edges.Count > maxFaceCount)
+                {
+                    yield break;
                 }
             }
 

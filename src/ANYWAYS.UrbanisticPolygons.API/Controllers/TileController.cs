@@ -79,7 +79,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             try
             {
                 var polygons = TiledPolygonGraphBuilder.GetPolygonsForTile((x, y, z), Startup.CachePath, Startup.TileSource.GetTile,
-                    IsBarrier);
+                    IsBarrier, false);
 
                 var layer = new Layer {Name = "urban-polygons"};
                 await foreach (var loc in polygons)
@@ -129,8 +129,8 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                _logger.LogError(e, "Failed to generate vector tile for {z}{x}/{y}", z, x, y);
+                return StatusCode(500);
             }
         }
     }

@@ -24,7 +24,7 @@ namespace ANYWAYS.UrbanisticPolygons
         private static readonly ConcurrentDictionary<uint, uint> _tiles = new ConcurrentDictionary<uint, uint>();
 
         public static async Task BuildForTile(uint tile, string folder, Func<uint, IEnumerable<OsmGeo>> getTile,
-            Func<TagsCollectionBase, bool> isBarrier)
+            Func<TagsCollectionBase, bool> isBarrier, bool build = true)
         {
             // wait until tile is removed from queue.
             while (true)

@@ -16,14 +16,14 @@ namespace ANYWAYS.UrbanisticPolygons
     {
         public static async IAsyncEnumerable<Feature> GetPolygonsForTile((uint x, uint y, int zoom) tile, string folder,
             Func<uint, IEnumerable<OsmGeo>> getTile,
-            Func<TagsCollectionBase, bool> isBarrier)
+            Func<TagsCollectionBase, bool> isBarrier, bool build = true)
         {
             if (tile.zoom > 14) throw new ArgumentException("Zoom has to maximum 14.");
 
             if (tile.zoom == 14)
             {
                 foreach (var (p, _) in await GetPolygonsForTile(TileStatic.ToLocalId(tile.x, tile.y, tile.zoom), folder,
-                    getTile, isBarrier))
+                    getTile, isBarrier, build))
                 {
                     yield return p;
                 }
@@ -34,7 +34,7 @@ namespace ANYWAYS.UrbanisticPolygons
 
                 foreach (var t in tile.SubTilesFor(14))
                 {
-                    var ps = await GetPolygonsForTile(TileStatic.ToLocalId(t.x, t.y, 14), folder, getTile, isBarrier);
+                    var ps = await GetPolygonsForTile(TileStatic.ToLocalId(t.x, t.y, 14), folder, getTile, isBarrier, build);
                     foreach (var (p, id) in ps)
                     {
                         if (faceGuids.Contains(id)) continue;
@@ -45,13 +45,17 @@ namespace ANYWAYS.UrbanisticPolygons
                 }
             }
         }
-        
-        private static async Task<IEnumerable<(Feature feature, Guid id)>> GetPolygonsForTile(uint tile, string folder, Func<uint, IEnumerable<OsmGeo>> getTile,
-            Func<TagsCollectionBase, bool> isBarrier)
-        {
-            await TiledBarrierGraphBuilder.BuildForTile(tile, folder, getTile, isBarrier);
 
-            await using var stream = File.OpenRead(Path.Combine(folder, $"{tile}.tile.graph.zip"));
+        private static async Task<IEnumerable<(Feature feature, Guid id)>> GetPolygonsForTile(uint tile, string folder,
+            Func<uint, IEnumerable<OsmGeo>> getTile,
+            Func<TagsCollectionBase, bool> isBarrier, bool build = true)
+        {
+            if (build) await TiledBarrierGraphBuilder.BuildForTile(tile, folder, getTile, isBarrier);
+
+            var file = Path.Combine(folder, $"{tile}.tile.graph.zip");
+            if (!File.Exists(file)) return Enumerable.Empty<(Feature feature, Guid id)>();
+            
+            await using var stream = File.OpenRead(file);
             await using var gzipStream = new GZipStream(stream, CompressionMode.Decompress);
             
             var polygonGraph = new TiledPolygonGraph();
