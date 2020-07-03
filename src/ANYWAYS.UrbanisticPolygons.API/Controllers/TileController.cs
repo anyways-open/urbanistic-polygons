@@ -49,7 +49,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             var mvt = new VectorTileSource
             {
                 maxzoom = 14,
-                minzoom = 11,
+                minzoom = 09,
                 attribution = "ANYWAYS BV",
                 basename = "urban-polygons",
                 id = "urban-polygons",
@@ -60,7 +60,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
                         description = "Urban Polygons",
                         id = "urban-polygons",
                         maxzoom = 14,
-                        minzoom = 11
+                        minzoom = 09
                     }
                 }
             };
