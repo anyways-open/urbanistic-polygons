@@ -78,7 +78,7 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
         [HttpGet("{z}/{x}/{y}.mvt")]
         public async Task<IActionResult> GetMvt(int z, uint x, uint y)
         {
-            if (z < 11) return NotFound();
+            if (z < 9) return NotFound();
             
             try
             {
