@@ -33,7 +33,7 @@ namespace ANYWAYS.UrbanisticPolygons.Preprocessor
                 return DefaultMergeFactorCalculator.Barriers.TryCalculateValue(tags, out _);
             }
             
-            var box = ((4.239349365234375, 51.36749369152795), (5.16632080078125, 50.92554455650557)); // belgium
+            var box = ((2.3785400390625, 51.52241608253253), (6.5093994140625, 49.40024999665212)); // belgium
             //var box = ((4.3402862548828125, 51.30099875579057), (4.75982666015625, 51.13627812193317));
 
             var tiles = box.TilesFor(14).Select(x => TileStatic.ToLocalId(x, 14));
