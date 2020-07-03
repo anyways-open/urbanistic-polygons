@@ -26,6 +26,8 @@ namespace ANYWAYS.UrbanisticPolygons.IO.Download
             {
                 return new GZipStream(File.OpenRead(fileName), CompressionMode.Decompress);
             }
+
+            return null;
             
             var redirectFileName = baseFileName + ".tile.redirect";
             redirectFileName = Path.Combine(cachePath, redirectFileName);
