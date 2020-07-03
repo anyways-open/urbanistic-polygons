@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ANYWAYS.UrbanisticPolygons.Tiles;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Net.Http.Headers;
 using NetTopologySuite.Features;
 using NetTopologySuite.IO.VectorTiles;
 using NetTopologySuite.IO.VectorTiles.Mapbox;
@@ -68,6 +69,9 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
             {
                 url
             };
+            
+            Response.Headers[HeaderNames.CacheControl] = "public,max-age=" + (int)TimeSpan.FromDays(1).TotalSeconds;
+            
             return new JsonResult(mvt);
         }
 
@@ -124,7 +128,9 @@ namespace ANYWAYS.UrbanisticPolygons.API.Controllers
                 var memoryStream = new MemoryStream();
                 vectorTile.Write(memoryStream);
                 memoryStream.Seek(0, SeekOrigin.Begin);
-
+            
+                Response.Headers[HeaderNames.CacheControl] = "public,max-age=" + (int)TimeSpan.FromDays(30).TotalSeconds;
+                
                 return new FileStreamResult(memoryStream, "application/x-protobuf");
             }
             catch (Exception e)
